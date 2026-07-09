@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const DEFAULT_API = "http://localhost:4000";
+const DEFAULT_API = "http://187.127.41.60:4000";
+const API_BASE = DEFAULT_API;
 const AFILIADO_URL = "https://go.aff.esportiva.bet/troj2nok";
 
 const FALLBACK_MESAS = [
@@ -54,7 +55,17 @@ function label(s){
 
 export default function App(){
   const [page,setPage]=useState("inicio");
-  const [api,setApi]=useState(localStorage.getItem("ls_api_url") || DEFAULT_API);
+  const [api,setApi]=useState(() => {
+    const saved = localStorage.getItem("ls_api_url");
+
+    // Força a API correta caso tenha ficado salvo localhost/Railway antigo no navegador.
+    if (!saved || saved.includes("localhost") || saved.includes("railway")) {
+      localStorage.setItem("ls_api_url", API_BASE);
+      return API_BASE;
+    }
+
+    return saved;
+  });
   const [mesaId,setMesaId]=useState(localStorage.getItem("ls_mesa") || "auto");
   const [data,setData]=useState(null);
   const [mesas,setMesas]=useState([]);
@@ -73,14 +84,31 @@ export default function App(){
   async function refresh(){
     try{
       const [s,m,o]=await Promise.all([
-        fetch(`${api}/sinal?mesaId=${mesaId}`,{cache:"no-store"}),
-        fetch(`${api}/mesas`,{cache:"no-store"}),
-        fetch(`${api}/operacoes?mesaId=${mesaId}&limit=80`,{cache:"no-store"}).catch(()=>null)
+        fetch(`${api}/sinal?mesaId=${mesaId}&t=${Date.now()}`,{cache:"no-store"}),
+        fetch(`${api}/mesas?t=${Date.now()}`,{cache:"no-store"}),
+        fetch(`${api}/operacoes?mesaId=${mesaId}&limit=80&t=${Date.now()}`,{cache:"no-store"}).catch(()=>null)
       ]);
-      if(s.ok) setData(await s.json());
-      if(m.ok) setMesas(await m.json());
-      if(o&&o.ok) setOps(await o.json());
-    }catch(e){ console.warn(e.message); }
+
+      if(s.ok){
+        const sinalJson = await s.json();
+        console.log("✅ Sinal recebido da API:", sinalJson);
+        setData(sinalJson);
+      } else {
+        console.warn("❌ Erro /sinal:", s.status);
+      }
+
+      if(m.ok){
+        const mesasJson = await m.json();
+        setMesas(Array.isArray(mesasJson) ? mesasJson : (mesasJson.mesas || []));
+      }
+
+      if(o&&o.ok){
+        const opsJson = await o.json();
+        setOps(opsJson);
+      }
+    }catch(e){
+      console.warn("❌ Falha ao buscar API:", e.message);
+    }
   }
 
   useEffect(()=>{ localStorage.setItem("ls_mesa",mesaId); refresh(); const t=setInterval(refresh,1300); return()=>clearInterval(t); },[mesaId,api]);
@@ -98,7 +126,7 @@ export default function App(){
   const mesasView = mesas.length ? mesas : FALLBACK_MESAS;
   const mesa=useMemo(()=>mesasView.find(m=>m.id===mesaId) || mesasView[0],[mesasView,mesaId]);
   const stats=data?.estatisticas||mesa?.estatisticas||ops?.estatisticas||{};
-  const sinal=data?.sinal;
+  const sinal=data?.operacao || data?.sinal || data?.ultimaOperacao;
 
   return <div className="app">
     <style>{css}</style>

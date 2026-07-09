@@ -1,6 +1,6 @@
 console.log("🎰 LS CAPTURA REFORÇADA");
 
-const API_URL = "http://187.127.41.60:4000/resultado";
+const API_URL = "https://ls-roleta-production-89c6.up.railway.app/resultado";
 
 let ativo = false;
 let debuggees = [];

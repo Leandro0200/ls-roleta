@@ -1,13 +1,25 @@
 const VERMELHOS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 
 const DEFAULT_CONFIG = {
-  paridade: { active: true, min: 3, gale: 2, conf: 70, coverZero: true },
-  cores: { active: true, min: 3, gale: 2, conf: 72, coverZero: true },
+  paridade: { active: true, min: 5, gale: 2, conf: 76, coverZero: true },
+  cores: { active: true, min: 4, gale: 2, conf: 78, coverZero: true },
   "alto-baixo": { active: true, min: 4, gale: 2, conf: 72, coverZero: true },
-  duzias: { active: true, min: 3, gale: 2, conf: 72, coverZero: true },
+
+  // DÚZIAS - agora separadas em 2 estratégias independentes
+  duziasSequencia: { active: true, min: 3, gale: 2, conf: 73, coverZero: true },
+  duziasAusente: { active: true, min: 7, gale: 2, conf: 70, coverZero: true },
+
+  // COLUNAS - agora separadas em 2 estratégias independentes
+  colunasSequencia: { active: true, min: 3, gale: 2, conf: 74, coverZero: true },
+  colunasAusente: { active: true, min: 7, gale: 2, conf: 70, coverZero: true },
+
+  // Compatibilidade com versões antigas do painel
+  duzias: { active: true, min: 3, gale: 2, conf: 73, coverZero: true },
   colunas: { active: true, min: 7, gale: 2, conf: 70, coverZero: true },
+
+  // Mantidas, mas desativadas para não aparecer texto tipo "6/10"
   alternancia: { active: false, min: 6, gale: 1, conf: 70, coverZero: true },
-  tendencia: { active: true, min: 7, gale: 2, conf: 74, coverZero: true },
+  tendencia: { active: false, min: 7, gale: 2, conf: 74, coverZero: true },
 };
 
 export function normalizarConfiguracoes(configs = []) {
@@ -60,25 +72,33 @@ export function analisarMesa(historico = [], mesaId = "xxxtreme", mesa = "Mesa",
     if (s) sinais.push(s);
   }
 
-  if (estrategiaAtiva(config, "duzias", mesaId)) {
-    const s = sinalDuzia(lista, mesaId, mesa, config.duzias);
+  // DÚZIAS: sequência e ausência agora são estratégias separadas.
+  // O ID antigo "duzias" continua funcionando como sequência para compatibilidade.
+  if (estrategiaAtiva(config, "duziasSequencia", mesaId) || estrategiaAtiva(config, "duzias", mesaId)) {
+    const cfg = estrategiaAtiva(config, "duziasSequencia", mesaId) ? config.duziasSequencia : config.duzias;
+    const s = sinalDuziaSequencia(lista, mesaId, mesa, cfg);
     if (s) sinais.push(s);
   }
 
-  if (estrategiaAtiva(config, "colunas", mesaId)) {
-    const s = sinalColuna(lista, mesaId, mesa, config.colunas);
+  if (estrategiaAtiva(config, "duziasAusente", mesaId)) {
+    const s = sinalDuziaAusente(lista, mesaId, mesa, config.duziasAusente);
     if (s) sinais.push(s);
   }
 
-  if (estrategiaAtiva(config, "alternancia", mesaId)) {
-    const s = sinalAlternanciaCor(lista, mesaId, mesa, config.alternancia);
+  // COLUNAS: sequência e ausência agora são estratégias separadas.
+  // O ID antigo "colunas" continua funcionando como ausência para compatibilidade.
+  if (estrategiaAtiva(config, "colunasSequencia", mesaId)) {
+    const s = sinalColunaSequencia(lista, mesaId, mesa, config.colunasSequencia);
     if (s) sinais.push(s);
   }
 
-  if (estrategiaAtiva(config, "tendencia", mesaId)) {
-    const s = sinalTendenciaCor(lista, mesaId, mesa, config.tendencia);
+  if (estrategiaAtiva(config, "colunasAusente", mesaId) || estrategiaAtiva(config, "colunas", mesaId)) {
+    const cfg = estrategiaAtiva(config, "colunasAusente", mesaId) ? config.colunasAusente : config.colunas;
+    const s = sinalColunaAusente(lista, mesaId, mesa, cfg);
     if (s) sinais.push(s);
   }
+
+  // Alternância e tendência ficam fora da análise principal para evitar sinais por frequência tipo 6/10.
 
   const melhor = sinais.sort((a, b) => percentNumber(b.confianca) - percentNumber(a.confianca))[0];
 
@@ -149,13 +169,13 @@ function semSinal(mesaId, mesa, motivo) {
 
 function sinalSequenciaCor(lista, mesaId, mesa, cfg) {
   const s = contarSequencia(lista, cor);
-  const min = Number(cfg.min || 3);
+  const min = Number(cfg.min || 4);
 
   if (s.valor === "vermelho" && s.qtd >= min) {
     return montarSinal({
       mesaId, mesa, tipo: "cor", entrada: "⚫ Preto",
       estrategia: "Sequência de Cor",
-      motivo: `${s.qtd} vermelhos seguidos`,
+      motivo: `Sequência de ${s.qtd} vermelhos`,
       confianca: s.qtd >= 4 ? 78 : 72,
       cfg
     });
@@ -165,7 +185,7 @@ function sinalSequenciaCor(lista, mesaId, mesa, cfg) {
     return montarSinal({
       mesaId, mesa, tipo: "cor", entrada: "🔴 Vermelho",
       estrategia: "Sequência de Cor",
-      motivo: `${s.qtd} pretos seguidos`,
+      motivo: `Sequência de ${s.qtd} pretos`,
       confianca: s.qtd >= 4 ? 78 : 72,
       cfg
     });
@@ -176,14 +196,14 @@ function sinalSequenciaCor(lista, mesaId, mesa, cfg) {
 
 function sinalParImpar(lista, mesaId, mesa, cfg) {
   const s = contarSequencia(lista, paridade);
-  const min = Number(cfg.min || 3);
+  const min = Number(cfg.min || 5);
 
   if (s.valor === "par" && s.qtd >= min) {
     return montarSinal({
       mesaId, mesa, tipo: "paridade", entrada: "Ímpar",
       estrategia: "Sequência Par/Ímpar",
-      motivo: `${s.qtd} pares seguidos`,
-      confianca: s.qtd >= 4 ? 76 : 70,
+      motivo: `Sequência de ${s.qtd} pares`,
+      confianca: s.qtd >= 5 ? 76 : 70,
       cfg
     });
   }
@@ -192,8 +212,8 @@ function sinalParImpar(lista, mesaId, mesa, cfg) {
     return montarSinal({
       mesaId, mesa, tipo: "paridade", entrada: "Par",
       estrategia: "Sequência Par/Ímpar",
-      motivo: `${s.qtd} ímpares seguidos`,
-      confianca: s.qtd >= 4 ? 76 : 70,
+      motivo: `Sequência de ${s.qtd} ímpares`,
+      confianca: s.qtd >= 5 ? 76 : 70,
       cfg
     });
   }
@@ -206,23 +226,18 @@ function sinalAltoBaixo(lista, mesaId, mesa, cfg) {
   const min = Number(cfg.min || 4);
 
   if (s.valor === "alto" && s.qtd >= min) {
-    return montarSinal({ mesaId, mesa, tipo: "alto-baixo", entrada: "Baixo 1-18", estrategia: "Alto/Baixo", motivo: `${s.qtd} altos seguidos`, confianca: 72, cfg });
+    return montarSinal({ mesaId, mesa, tipo: "alto-baixo", entrada: "Baixo 1-18", estrategia: "Sequência Alto/Baixo", motivo: `Sequência de ${s.qtd} altos`, confianca: 72, cfg });
   }
 
   if (s.valor === "baixo" && s.qtd >= min) {
-    return montarSinal({ mesaId, mesa, tipo: "alto-baixo", entrada: "Alto 19-36", estrategia: "Alto/Baixo", motivo: `${s.qtd} baixos seguidos`, confianca: 72, cfg });
+    return montarSinal({ mesaId, mesa, tipo: "alto-baixo", entrada: "Alto 19-36", estrategia: "Sequência Alto/Baixo", motivo: `Sequência de ${s.qtd} baixos`, confianca: 72, cfg });
   }
 
   return null;
 }
 
-function sinalDuzia(lista, mesaId, mesa, cfg) {
-  // REGRA CORRETA:
-  // 1ª + 1ª + 1ª -> entrar 2ª + 3ª dúzia
-  // 2ª + 2ª + 2ª -> entrar 1ª + 3ª dúzia
-  // 3ª + 3ª + 3ª -> entrar 1ª + 2ª dúzia
-  // Zero não conta sequência.
-  const min = 3;
+function sinalDuziaSequencia(lista, mesaId, mesa, cfg) {
+  const min = Number(cfg.min || 3);
 
   const ultimas = lista
     .slice(0, min)
@@ -245,27 +260,103 @@ function sinalDuzia(lista, mesaId, mesa, cfg) {
     mesa,
     tipo: "duzia",
     entrada,
-    estrategia: "Repetição de Dúzia",
-    motivo: `${duziaRepetida} repetiu 3 vezes consecutivas`,
-    confianca: 72,
-    cfg: { ...cfg, min: 3 }
+    estrategia: "Sequência de Dúzia",
+    motivo: `Sequência de ${min} na ${duziaRepetida}`,
+    confianca: 73,
+    cfg
   });
 }
 
-function sinalColuna(lista, mesaId, mesa, cfg) {
+function sinalDuziaAusente(lista, mesaId, mesa, cfg) {
   const qtd = Number(cfg.min || 7);
-  const ultimos = lista.slice(0, Math.max(qtd, 7)).map((r) => coluna(r.numero)).filter((v) => v !== "zero");
-  const contagem = contar(ultimos);
+  const ultimas = lista
+    .slice(0, qtd)
+    .map((r) => duzia(r.numero))
+    .filter((v) => v !== "zero");
 
-  for (const c of ["1ª coluna", "2ª coluna", "3ª coluna"]) {
-    if (!contagem[c] && ultimos.length >= qtd) {
-      return montarSinal({ mesaId, mesa, tipo: "coluna", entrada: c, estrategia: "Coluna Ausente", motivo: `${c} não saiu nos últimos ${ultimos.length} giros`, confianca: 70, cfg });
+  if (ultimas.length < qtd) return null;
+
+  const contagem = contar(ultimas);
+
+  for (const d of ["1ª dúzia", "2ª dúzia", "3ª dúzia"]) {
+    if (!contagem[d]) {
+      return montarSinal({
+        mesaId,
+        mesa,
+        tipo: "duzia",
+        entrada: d,
+        estrategia: "Dúzia Ausente",
+        motivo: `${d} não saiu nos últimos ${ultimas.length} giros`,
+        confianca: 70,
+        cfg
+      });
     }
   }
 
   return null;
 }
 
+function sinalColunaSequencia(lista, mesaId, mesa, cfg) {
+  const min = Number(cfg.min || 3);
+
+  const ultimas = lista
+    .slice(0, min)
+    .map((r) => coluna(r.numero));
+
+  if (ultimas.length < min) return null;
+  if (ultimas.includes("zero")) return null;
+
+  const colunaRepetida = ultimas[0];
+  const repetiu = ultimas.every((c) => c === colunaRepetida);
+
+  if (!repetiu) return null;
+
+  const entrada = ["1ª coluna", "2ª coluna", "3ª coluna"]
+    .filter((c) => c !== colunaRepetida)
+    .join(" + ");
+
+  return montarSinal({
+    mesaId,
+    mesa,
+    tipo: "coluna",
+    entrada,
+    estrategia: "Sequência de Coluna",
+    motivo: `Sequência de ${min} na ${colunaRepetida}`,
+    confianca: 74,
+    cfg
+  });
+}
+
+function sinalColunaAusente(lista, mesaId, mesa, cfg) {
+  const qtd = Number(cfg.min || 7);
+  const ultimos = lista
+    .slice(0, qtd)
+    .map((r) => coluna(r.numero))
+    .filter((v) => v !== "zero");
+
+  if (ultimos.length < qtd) return null;
+
+  const contagem = contar(ultimos);
+
+  for (const c of ["1ª coluna", "2ª coluna", "3ª coluna"]) {
+    if (!contagem[c]) {
+      return montarSinal({
+        mesaId,
+        mesa,
+        tipo: "coluna",
+        entrada: c,
+        estrategia: "Coluna Ausente",
+        motivo: `${c} não saiu nos últimos ${ultimos.length} giros`,
+        confianca: 70,
+        cfg
+      });
+    }
+  }
+
+  return null;
+}
+
+// Mantidas somente para compatibilidade. Não são chamadas no motor principal.
 function sinalAlternanciaCor(lista, mesaId, mesa, cfg) {
   const qtd = Number(cfg.min || 6);
   const cores = lista.slice(0, qtd).map((r) => cor(r.numero));

@@ -596,3 +596,12 @@ function BottomNav({ tab, setTab }) {
     </nav>
   );
 }
+.signal h1,
+.signal h1 strong{
+  color:#fff !important;
+  text-shadow:0 0 18px rgba(255,255,255,.25);
+}
+
+.signal .status{
+  color:#4dff4d !important;
+}

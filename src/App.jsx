@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const DEFAULT_API = "http://187.127.41.60:4000";
+const DEFAULT_API = "https://ls-roleta-production-89c6.up.railway.app";
 const API_BASE = DEFAULT_API;
 const AFILIADO_URL = "https://go.aff.esportiva.bet/troj2nok";
 

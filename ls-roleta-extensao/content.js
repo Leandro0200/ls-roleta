@@ -1,0 +1,1 @@
+console.log("🧩 LS Roleta content ativo:", location.href);

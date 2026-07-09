@@ -1,0 +1,598 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import "./ls-roleta-v25.1.css";
+
+const API_URL = "https://ls-roleta-production.up.railway.app";
+
+const REDS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+
+const MESAS = [
+  { id: "brasileira", nome: "Roleta Brasileira", curto: "Brasileira", icon: "🇧🇷" },
+  { id: "immersive", nome: "Immersive Roulette", curto: "Immersive", icon: "🎯" },
+  { id: "lightning", nome: "Lightning Roulette", curto: "Lightning", icon: "⚡" },
+  { id: "xxxtreme", nome: "XXXtreme Lightning", curto: "XXXtreme", icon: "⚡⚡⚡" },
+  { id: "speed", nome: "Speed Roulette", curto: "Speed", icon: "🚀" },
+  { id: "vip", nome: "VIP Roulette", curto: "VIP", icon: "👑" },
+];
+
+const DEFAULT_MESAS = {
+  brasileira: true,
+  immersive: true,
+  lightning: true,
+  xxxtreme: true,
+  speed: true,
+  vip: true,
+};
+
+function getColor(numero) {
+  const n = Number(numero);
+  if (n === 0) return "green";
+  return REDS.includes(n) ? "red" : "black";
+}
+
+function getCorLabel(numero) {
+  const cor = getColor(numero);
+  if (cor === "red") return "vermelho";
+  if (cor === "black") return "preto";
+  return "verde";
+}
+
+function normalizeMesaName(value) {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("brasileira")) return "brasileira";
+  if (text.includes("xxx") || text.includes("xxxtreme")) return "xxxtreme";
+  if (text.includes("lightning")) return "lightning";
+  if (text.includes("speed")) return "speed";
+  if (text.includes("vip")) return "vip";
+  if (text.includes("immersive")) return "immersive";
+  return "immersive";
+}
+
+function getMesa(id) {
+  return MESAS.find((m) => m.id === id) || MESAS[1];
+}
+
+function cleanEntry(text = "") {
+  return String(text)
+    .replace(/🔴|⚫|🟢/g, "")
+    .replace(/entrar no/i, "")
+    .replace(/entrar em/i, "")
+    .trim()
+    .toUpperCase();
+}
+
+function percent(value, fallback = 74) {
+  const n = Number(String(value || "").replace(/[^0-9]/g, ""));
+  return Math.max(0, Math.min(n || fallback, 100));
+}
+
+function sequence(history) {
+  if (!history.length) return { cor: "aguardando", qtd: 0 };
+  const first = history[0]?.cor || getCorLabel(history[0]?.numero);
+  let qtd = 0;
+  for (const item of history) {
+    const cor = item.cor || getCorLabel(item.numero);
+    if (cor === first) qtd += 1;
+    else break;
+  }
+  return { cor: first, qtd };
+}
+
+export default function App() {
+  const [tab, setTab] = useState("inicio");
+  const [now, setNow] = useState(new Date());
+  const [status, setStatus] = useState("OFFLINE");
+  const [history, setHistory] = useState([]);
+  const [signal, setSignal] = useState(null);
+  const [flash, setFlash] = useState(false);
+  const [score, setScore] = useState({ green: 59, red: 21, loss: 21 });
+  const [signalHistory, setSignalHistory] = useState([]);
+  const [mesasAtivas, setMesasAtivas] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("ls_mesas_ativas_v251")) || DEFAULT_MESAS;
+    } catch {
+      return DEFAULT_MESAS;
+    }
+  });
+
+  const lastNumberRef = useRef(null);
+  const lastNotifyRef = useRef("");
+
+  const selectedMesaIds = Object.entries(mesasAtivas).filter(([, v]) => v).map(([k]) => k);
+
+  const signalMesaId = normalizeMesaName(signal?.mesa || signal?.nomeMesa || signal?.table || signal?.origemMesa);
+  const mesaAtual = getMesa(signal?.mesaId || signalMesaId);
+
+  const data = useMemo(() => {
+    const recent = history.slice(0, 50);
+    const total = recent.length || 1;
+    const reds = recent.filter((r) => (r.cor || getCorLabel(r.numero)) === "vermelho").length;
+    const blacks = recent.filter((r) => (r.cor || getCorLabel(r.numero)) === "preto").length;
+    const greens = recent.filter((r) => Number(r.numero) === 0 || (r.cor || getCorLabel(r.numero)) === "verde").length;
+    const seq = sequence(history);
+
+    return {
+      latest: history[0],
+      recent: history.slice(0, 10),
+      total: recent.length,
+      reds,
+      blacks,
+      greens,
+      seq,
+      redPct: Math.round((reds / total) * 100),
+      blackPct: Math.round((blacks / total) * 100),
+      greenPct: Math.round((greens / total) * 100),
+    };
+  }, [history]);
+
+  useEffect(() => {
+    loadData();
+    const api = setInterval(loadData, 1000);
+    const clock = setInterval(() => setNow(new Date()), 1000);
+    return () => {
+      clearInterval(api);
+      clearInterval(clock);
+    };
+  }, [mesasAtivas]);
+
+  useEffect(() => {
+    localStorage.setItem("ls_mesas_ativas_v251", JSON.stringify(mesasAtivas));
+  }, [mesasAtivas]);
+
+  async function loadData() {
+    try {
+      const res = await fetch(`${API_URL}/sinal`, { cache: "no-store" });
+      const raw = await res.json();
+
+      const nextHistory =
+        raw.historico ||
+        raw.historicoCompleto ||
+        (raw.numeros || []).map((numero) => ({
+          numero,
+          cor: getCorLabel(numero),
+          paridade: Number(numero) === 0 ? "zero" : Number(numero) % 2 === 0 ? "par" : "impar",
+        })) ||
+        [];
+
+      const latest = nextHistory[0];
+
+      if (latest?.numero !== undefined && latest.numero !== lastNumberRef.current) {
+        lastNumberRef.current = latest.numero;
+        setFlash(true);
+        setTimeout(() => setFlash(false), 650);
+      }
+
+      const mesaId = normalizeMesaName(raw.sinal?.mesa || raw.sinal?.nomeMesa || raw.mesa || raw.nomeMesa);
+      const mesa = getMesa(mesaId);
+
+      const nextSignal = raw.sinal
+        ? {
+            ...raw.sinal,
+            mesaId,
+            mesa: raw.sinal.mesa || raw.sinal.nomeMesa || mesa.nome,
+            ativo: Boolean(
+              (raw.sinal.ativo || raw.sinal.status === "aberto" || raw.sinal.entradaCurta) &&
+              mesasAtivas[mesaId]
+            ),
+            entrada: raw.sinal.entrada || raw.sinal.entradaCurta || "",
+            protecao: raw.sinal.protecao || raw.sinal.cobertura || "Zero",
+            confianca: raw.sinal.confianca || "78%",
+            estrategia: raw.sinal.estrategia || raw.sinal.tipo || "Par / Ímpar",
+          }
+        : null;
+
+      setHistory(nextHistory);
+      setSignal(nextSignal);
+      setStatus("AO VIVO");
+
+      const key = `${nextSignal?.mesaId}-${nextSignal?.entrada}`;
+      if (nextSignal?.ativo && key !== lastNotifyRef.current) {
+        lastNotifyRef.current = key;
+        sendNotification(`${getMesa(nextSignal.mesaId).icon} ${nextSignal.mesa}`, `${nextSignal.entrada} | Confiança ${nextSignal.confianca}`);
+        beep();
+      }
+    } catch (error) {
+      console.error("Erro API:", error);
+      setStatus("OFFLINE");
+    }
+  }
+
+  function toggleMesa(id) {
+    setMesasAtivas((old) => ({ ...old, [id]: !old[id] }));
+  }
+
+  async function requestNotification() {
+    if (!("Notification" in window)) return;
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") sendNotification("LS Roleta", "Notificações ativadas.");
+  }
+
+  function sendNotification(title, body) {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+    new Notification(title, { body, icon: "/favicon.png", badge: "/favicon.png" });
+  }
+
+  function beep() {
+    try {
+      const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+      audio.play().catch(() => {});
+    } catch {}
+  }
+
+  const confidence = percent(signal?.confianca, 74);
+  const accuracy = 74;
+
+  return (
+    <div className="ls25">
+      <Sidebar tab={tab} setTab={setTab} />
+
+      <main className="ls-main">
+        <TopBar now={now} status={status} onNotify={requestNotification} />
+
+        {tab === "inicio" && (
+          <>
+            <section className="panel-head">
+              <div>
+                <h2>PAINEL AO VIVO</h2>
+                <p>Sistema online, sinal automático, estatísticas e notificações.</p>
+              </div>
+              <div className="general-confidence">
+                <span>CONFIANÇA GERAL</span>
+                <b>{accuracy}%</b>
+                <div><i style={{ width: `${accuracy}%` }} /></div>
+              </div>
+            </section>
+
+            <section className="hero-grid">
+              <SignalCard signal={signal} mesa={mesaAtual} confidence={confidence} />
+              <div className="side-cards">
+                <LastNumberCard latest={data.latest} flash={flash} />
+                <SequenceCard seq={data.seq} />
+              </div>
+            </section>
+
+            <TableSelector mesasAtivas={mesasAtivas} toggleMesa={toggleMesa} />
+
+            <section className="metrics-grid">
+              <Metric type="green" label="GREENS" value={score.green} sub="58,4%" />
+              <Metric type="red" label="REDS" value={score.red} sub="20,8%" />
+              <Metric type="loss" label="LOSS" value={score.loss} sub="20,8%" />
+              <Metric type="gold" label="ASSERTIVIDADE" value={`${accuracy}%`} sub="80 green / 28 red" />
+            </section>
+
+            <section className="two-grid">
+              <LastNumbers history={data.recent} total={data.total} />
+              <Ranking />
+            </section>
+
+            <section className="two-grid">
+              <Trend seq={data.seq} />
+              <RecentHistory history={history} data={data} />
+            </section>
+          </>
+        )}
+
+        {tab === "mesas" && (
+          <PageCard title="🎰 MESAS" subtitle={`${selectedMesaIds.length} ativas`}>
+            <TableSelector mesasAtivas={mesasAtivas} toggleMesa={toggleMesa} expanded />
+          </PageCard>
+        )}
+
+        {tab === "estrategias" && (
+          <>
+            <PageCard title="📡 Selecionar mesas para receber sinais" subtitle={`${selectedMesaIds.length} selecionadas`}>
+              <TableSelector mesasAtivas={mesasAtivas} toggleMesa={toggleMesa} expanded />
+            </PageCard>
+
+            <PageCard title="🎯 Estratégias ativas" subtitle="LS 25.1">
+              <div className="strategy-list">
+                {["Sequência de Cor", "Par / Ímpar", "Alto / Baixo", "Dúzias", "Colunas"].map((name, i) => (
+                  <div key={name} className="strategy-item">
+                    <b>{name}</b>
+                    <span>{78 - i * 3}%</span>
+                    <em><i style={{ width: `${78 - i * 3}%` }} /></em>
+                  </div>
+                ))}
+              </div>
+            </PageCard>
+          </>
+        )}
+
+        {tab === "estatisticas" && (
+          <PageCard title="📊 Estatísticas" subtitle="ao vivo">
+            <section className="metrics-grid">
+              <Metric type="red" label="VERMELHOS" value={data.reds} sub={`${data.redPct}%`} />
+              <Metric type="loss" label="PRETOS" value={data.blacks} sub={`${data.blackPct}%`} />
+              <Metric type="green" label="VERDES" value={data.greens} sub={`${data.greenPct}%`} />
+              <Metric type="gold" label="TOTAL" value={data.total} sub="giros" />
+            </section>
+          </PageCard>
+        )}
+
+        {tab === "historico" && (
+          <PageCard title="🕒 Histórico recente" subtitle="últimos giros">
+            <RecentHistory history={history} data={data} />
+          </PageCard>
+        )}
+
+        {tab === "config" && (
+          <PageCard title="⚙️ Configurações" subtitle="sistema">
+            <div className="config-grid">
+              <button onClick={requestNotification}>🔔 Ativar notificações</button>
+              <button onClick={beep}>🔊 Testar som</button>
+              <button onClick={() => localStorage.removeItem("ls_mesas_ativas_v251")}>♻️ Resetar mesas</button>
+            </div>
+          </PageCard>
+        )}
+      </main>
+
+      <BottomNav tab={tab} setTab={setTab} />
+    </div>
+  );
+}
+
+function Sidebar({ tab, setTab }) {
+  const items = [
+    ["inicio", "⌂", "INÍCIO"],
+    ["estrategias", "↗", "ESTRATÉGIAS"],
+    ["mesas", "🎡", "MESAS"],
+    ["estatisticas", "▮", "ESTATÍSTICAS"],
+    ["historico", "◷", "HISTÓRICO"],
+    ["alertas", "♧", "ALERTAS"],
+    ["relatorios", "▤", "RELATÓRIOS"],
+    ["config", "⚙", "CONFIGURAÇÕES"],
+    ["suporte", "?", "SUPORTE"],
+  ];
+
+  return (
+    <aside className="sidebar">
+      <div className="logo">
+        <strong><span>L</span>S</strong>
+        <b>ROLETA</b>
+        <small>AUTOMAÇÃO <em>25.1</em></small>
+      </div>
+
+      <nav>
+        {items.map(([id, icon, label]) => (
+          <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
+            <span>{icon}</span>
+            {label}
+            {id === "alertas" && <i>3</i>}
+          </button>
+        ))}
+      </nav>
+
+      <div className="plan">
+        <b>👑 PLANO <span>PREMIUM</span></b>
+        <small>Expira em</small>
+        <strong>25/07/2026</strong>
+        <button>VER PLANOS</button>
+      </div>
+    </aside>
+  );
+}
+
+function TopBar({ now, status, onNotify }) {
+  return (
+    <header className="top">
+      <div className="live-pill">
+        <span className={status === "AO VIVO" ? "dot on" : "dot"} />
+        <b>{status}</b>
+        <small>{now.toLocaleTimeString("pt-BR")}</small>
+      </div>
+
+      <p>Sistema online, sinal automático, estatísticas e notificações.</p>
+
+      <button onClick={onNotify}>🔔</button>
+      <button>☰</button>
+    </header>
+  );
+}
+
+function SignalCard({ signal, mesa, confidence }) {
+  const active = signal?.ativo;
+
+  return (
+    <section className={`signal-card ${active ? "open" : ""}`}>
+      <div className="card-label">🟢 NOVO SINAL</div>
+
+      <div className="mesa-title">
+        <span>{mesa.icon}</span>
+        <b>{signal?.mesa || mesa.nome}</b>
+      </div>
+
+      {active ? (
+        <>
+          <p className="signal-status">SINAL ABERTO</p>
+          <h1>ENTRAR EM<br />{cleanEntry(signal.entrada)}</h1>
+
+          <div className="signal-details">
+            <div><span>🛡 COBERTURA</span><b>{String(signal.protecao || "ZERO").replace(/cobrir o/i, "").trim().toUpperCase()}</b></div>
+            <div><span>🎯 ESTRATÉGIA</span><b>{signal.estrategia || "Par / Ímpar"}</b></div>
+            <div><span>🛡 PROTEÇÃO</span><b>{signal.gale || "Sem gale"}</b></div>
+            <div><span>📈 CONFIANÇA</span><b className="green">{signal.confianca}</b></div>
+          </div>
+
+          <div className="progress"><i style={{ width: `${confidence}%` }} /></div>
+
+          <footer>
+            <span>◷ PRÓXIMO GIRO EM</span>
+            <b>1 confirmações</b>
+          </footer>
+        </>
+      ) : (
+        <>
+          <p className="signal-status">STATUS</p>
+          <h1 className="waiting">AGUARDANDO</h1>
+          <button className="no-signal">SEM SINAL</button>
+          <small>⚠️ Análise estatística. Não garante resultado.</small>
+        </>
+      )}
+    </section>
+  );
+}
+
+function LastNumberCard({ latest, flash }) {
+  const numero = latest?.numero;
+  const cor = latest?.cor || getCorLabel(numero);
+
+  return (
+    <section className="panel-card last">
+      <h3>ÚLTIMO NÚMERO</h3>
+      <div className={`ball big ${getColor(numero)} ${flash ? "flash" : ""}`}>{numero ?? "-"}</div>
+      <b className={cor}>{cor.toUpperCase()}</b>
+      <small>Tempo real</small>
+    </section>
+  );
+}
+
+function SequenceCard({ seq }) {
+  return (
+    <section className="panel-card seq">
+      <h3>SEQUÊNCIA ATUAL</h3>
+      <div className="seq-row"><i /><i /><b>{seq.qtd}x</b></div>
+      <strong>{seq.cor.toUpperCase()}</strong>
+    </section>
+  );
+}
+
+function TableSelector({ mesasAtivas, toggleMesa, expanded = false }) {
+  return (
+    <section className={`tables ${expanded ? "expanded" : ""}`}>
+      <div className="section-title">
+        <h3>SELECIONAR MESAS PARA RECEBER SINAIS</h3>
+        {!expanded && <button>⚙ GERENCIAR MESAS</button>}
+      </div>
+
+      <div className="tables-grid">
+        {MESAS.map((mesa) => (
+          <button key={mesa.id} className={`table-card ${mesasAtivas[mesa.id] ? "on" : "off"}`} onClick={() => toggleMesa(mesa.id)}>
+            <span>{mesa.icon}</span>
+            <b>{mesa.curto}<small>ROULETTE</small></b>
+            <em>{mesasAtivas[mesa.id] ? "ON" : "OFF"}</em>
+            <i><u /></i>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Metric({ type, label, value, sub }) {
+  return (
+    <section className={`metric ${type}`}>
+      <span>{label}</span>
+      <b>{value}</b>
+      <small>{sub}</small>
+      <svg viewBox="0 0 160 32" preserveAspectRatio="none">
+        <polyline points="0,23 18,18 33,24 48,12 64,18 80,9 97,21 112,14 128,20 144,10 160,17" />
+      </svg>
+    </section>
+  );
+}
+
+function LastNumbers({ history, total }) {
+  return (
+    <section className="panel-card">
+      <div className="section-title"><h3>ÚLTIMOS NÚMEROS</h3><span>{total} giros</span></div>
+      <div className="numbers-row">
+        {history.map((item, index) => <SmallBall key={`${item.numero}-${index}`} numero={item.numero} active={index === 0} />)}
+      </div>
+      <div className="range-tabs"><b>10</b><span>20</span><span>50</span><span>100</span></div>
+    </section>
+  );
+}
+
+function Ranking() {
+  const items = [
+    ["Sequência de Cor", 78],
+    ["Colunas", 76],
+    ["Alto / Baixo", 73],
+    ["Dúzias", 71],
+    ["Par / Ímpar", 69],
+  ];
+  return (
+    <section className="panel-card ranking">
+      <h3>RANKING DAS ESTRATÉGIAS</h3>
+      {items.map(([name, value]) => (
+        <div key={name}>
+          <span>{name}</span>
+          <i><u style={{ width: `${value}%` }} /></i>
+          <b>{value}%</b>
+        </div>
+      ))}
+      <small>Base: últimos 200 giros</small>
+    </section>
+  );
+}
+
+function Trend({ seq }) {
+  return (
+    <section className="panel-card trend">
+      <h3>CONTROLE DE TENDÊNCIA</h3>
+      <div className="trend-content">
+        <div className="donut">72%</div>
+        <div>
+          <span>Sequência atual</span>
+          <b>{seq.qtd}x {seq.cor.toUpperCase()}</b>
+          <span>Maior sequência</span>
+          <b className="red">6x VERMELHO</b>
+          <span>Alternância</span>
+          <b>8 giros</b>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RecentHistory({ history, data }) {
+  return (
+    <section className="panel-card recent">
+      <div className="section-title"><h3>HISTÓRICO RECENTE</h3><span>30 GIROS</span></div>
+      <div className="recent-grid">
+        {history.slice(0, 30).map((item, index) => <SmallBall key={`${item.numero}-${index}`} numero={item.numero} active={index === 0} />)}
+      </div>
+      <footer>
+        <span>VERMELHOS <b>{data.reds}</b></span>
+        <span>PRETOS <b>{data.blacks}</b></span>
+        <span>VERDES <b>{data.greens}</b></span>
+      </footer>
+    </section>
+  );
+}
+
+function SmallBall({ numero, active }) {
+  return <span className={`ball small ${getColor(numero)} ${active ? "active" : ""}`}>{numero}</span>;
+}
+
+function PageCard({ title, subtitle, children }) {
+  return (
+    <section className="page-card">
+      <div className="section-title">
+        <h3>{title}</h3>
+        <span>{subtitle}</span>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function BottomNav({ tab, setTab }) {
+  const items = [
+    ["inicio", "⌂", "INÍCIO"],
+    ["estrategias", "🎯", "ESTRATÉGIAS"],
+    ["mesas", "🎡", "MESAS"],
+    ["estatisticas", "▮", "ESTATÍSTICAS"],
+    ["config", "⚙", "CONFIGURAÇÕES"],
+  ];
+  return (
+    <nav className="bottom-nav">
+      {items.map(([id, icon, label]) => (
+        <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
+          <span>{icon}</span>
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+}

@@ -1,0 +1,180 @@
+.signal-card-v20 {
+  width: 100%;
+  border-radius: 28px;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(15,15,15,.92), rgba(4,4,4,.82));
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow:
+    0 32px 82px rgba(0,0,0,.78),
+    0 0 42px rgba(200,16,46,.18),
+    inset 0 0 34px rgba(255,255,255,.04);
+  backdrop-filter: blur(22px);
+  color: #fff;
+}
+
+.signal-card-v20.active {
+  border-color: rgba(255,38,56,.36);
+}
+
+.signal-badge {
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .6px;
+  margin-bottom: 18px;
+}
+
+.signal-badge.live {
+  background: rgba(0,184,95,.16);
+  border: 1px solid rgba(0,184,95,.48);
+  color: #caffdf;
+  animation: signalLivePulse 1.8s ease-in-out infinite;
+}
+
+.signal-badge.waiting {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.16);
+  color: #ddd;
+}
+
+@keyframes signalLivePulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(0,184,95,.20); }
+  50% { box-shadow: 0 0 28px rgba(0,184,95,.46); }
+}
+
+.signal-main {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.signal-main span,
+.signal-zero span,
+.signal-row span,
+.signal-strategies span,
+.confidence-title span {
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .7px;
+}
+
+.signal-main strong {
+  font-size: clamp(30px, 5vw, 50px);
+  font-weight: 1000;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 24px rgba(255,38,56,.28);
+}
+
+.signal-zero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 20px;
+  padding: 15px;
+  margin-bottom: 12px;
+  background: rgba(0,184,95,.11);
+  border: 1px solid rgba(0,184,95,.34);
+}
+
+.signal-zero strong {
+  color: #caffdf;
+  font-size: 22px;
+  font-weight: 1000;
+}
+
+.signal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.signal-row strong {
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.signal-strategies {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.signal-strategies div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.signal-strategies b {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 13px;
+  color: #fff;
+}
+
+.confidence-box {
+  display: grid;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.confidence-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.confidence-title strong {
+  font-size: 22px;
+  color: #f7b733;
+}
+
+.confidence-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.09);
+}
+
+.confidence-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #c8102e, #ff2638, #f7b733);
+  box-shadow: 0 0 18px rgba(247,183,51,.42);
+  transition: width .5s ease;
+}
+
+.signal-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  color: #ddd;
+  font-weight: 900;
+}
+
+.signal-card-v20.waiting h2 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.signal-muted {
+  color: #aaa;
+  font-weight: 700;
+  margin: 8px 0 18px;
+}

@@ -1,0 +1,292 @@
+.premium-roulette-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(200, 16, 46, .38), transparent 38%),
+    linear-gradient(180deg, #030303 0%, #130104 45%, #020202 100%);
+}
+
+.premium-roulette-image {
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  width: min(1540px, 118vw);
+  height: 790px;
+  transform: translate(-50%, -50%);
+  background-image: url("/roleta-premium-bg.png");
+  background-size: cover;
+  background-position: center 45%;
+  filter: saturate(1.12) contrast(1.08) brightness(.68);
+  opacity: .92;
+  animation: premiumZoom 11s ease-in-out infinite alternate;
+  z-index: 1;
+}
+
+@keyframes premiumZoom {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  to {
+    transform: translate(-50%, -50%) scale(1.055);
+  }
+}
+
+.premium-roulette-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.58) 0%, rgba(0,0,0,.06) 30%, rgba(0,0,0,.76) 68%, rgba(0,0,0,.92) 100%),
+    radial-gradient(circle at 50% 50%, transparent 0 38%, rgba(0,0,0,.34) 72%, rgba(0,0,0,.78) 100%);
+}
+
+.premium-roulette-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 46%, transparent 0 34%, rgba(0,0,0,.28) 62%, rgba(0,0,0,.78) 100%),
+    linear-gradient(90deg, rgba(0,0,0,.86), transparent 22%, transparent 78%, rgba(0,0,0,.86));
+}
+
+.premium-roulette-glow {
+  position: absolute;
+  width: 560px;
+  height: 280px;
+  border-radius: 50%;
+  filter: blur(40px);
+  z-index: 2;
+  opacity: .64;
+  animation: premiumGlow 8s ease-in-out infinite alternate;
+}
+
+.glow-left {
+  left: -5%;
+  top: 18%;
+  background: radial-gradient(circle, rgba(255, 38, 56, .42), transparent 70%);
+}
+
+.glow-right {
+  right: -5%;
+  top: 16%;
+  background: radial-gradient(circle, rgba(247, 183, 51, .28), transparent 70%);
+  animation-delay: 1.2s;
+}
+
+@keyframes premiumGlow {
+  from {
+    transform: translateX(-24px) scale(1);
+    opacity: .42;
+  }
+
+  to {
+    transform: translateX(32px) scale(1.15);
+    opacity: .74;
+  }
+}
+
+.premium-roulette-shine {
+  position: absolute;
+  left: -20%;
+  top: 25%;
+  width: 55%;
+  height: 120px;
+  transform: rotate(-10deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.20), rgba(247,183,51,.24), transparent);
+  filter: blur(12px);
+  z-index: 6;
+  opacity: .55;
+  animation: shineMove 5.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shineMove {
+  0% {
+    left: -35%;
+    opacity: 0;
+  }
+
+  30% {
+    opacity: .62;
+  }
+
+  100% {
+    left: 105%;
+    opacity: 0;
+  }
+}
+
+.premium-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.premium-particles i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--s);
+  height: var(--s);
+  border-radius: 999px;
+  background: radial-gradient(circle, #fff8cf, #f7b733 55%, transparent 72%);
+  box-shadow: 0 0 18px rgba(247,183,51,.75);
+  opacity: .36;
+  animation: particleFloat 5.8s ease-in-out infinite alternate;
+  animation-delay: var(--d);
+}
+
+@keyframes particleFloat {
+  from {
+    transform: translateY(0) scale(.82);
+    opacity: .18;
+  }
+
+  to {
+    transform: translateY(-28px) scale(1.12);
+    opacity: .58;
+  }
+}
+
+@media (max-width: 760px) {
+  .premium-roulette-image {
+    width: 1320px;
+    height: 720px;
+    top: 43%;
+    background-position: center center;
+  }
+
+  .premium-roulette-stage::after {
+    background:
+      linear-gradient(180deg, rgba(0,0,0,.62) 0%, rgba(0,0,0,.08) 28%, rgba(0,0,0,.82) 63%, rgba(0,0,0,.98) 100%),
+      radial-gradient(circle at 50% 42%, transparent 0 32%, rgba(0,0,0,.38) 66%, rgba(0,0,0,.82) 100%);
+  }
+}
+
+
+/* LS Roleta 17.1 - acabamento premium */
+.premium-roulette-stage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(1150px, 92vw);
+  height: 360px;
+  transform: translate(-50%, -40%);
+  background:
+    radial-gradient(ellipse, rgba(0,0,0,.62), transparent 72%),
+    radial-gradient(circle at 50% 40%, rgba(247,183,51,.12), transparent 58%);
+  filter: blur(14px);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.premium-roulette-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.premium-roulette-gold-sweep {
+  position: absolute;
+  left: -40%;
+  top: 38%;
+  width: 70%;
+  height: 90px;
+  transform: rotate(-7deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, .16),
+    rgba(247, 183, 51, .30),
+    rgba(255, 255, 255, .12),
+    transparent
+  );
+  filter: blur(10px);
+  z-index: 7;
+  opacity: 0;
+  animation: goldSweep 6.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes goldSweep {
+  0% {
+    left: -45%;
+    opacity: 0;
+  }
+
+  28% {
+    opacity: .72;
+  }
+
+  65% {
+    opacity: .44;
+  }
+
+  100% {
+    left: 115%;
+    opacity: 0;
+  }
+}
+
+.premium-card-depth {
+  position: absolute;
+  left: 50%;
+  top: 68%;
+  width: min(1180px, 90vw);
+  height: 210px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgba(200,16,46,.18), transparent 72%);
+  filter: blur(28px);
+  z-index: 6;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .premium-roulette-image {
+    width: 1480px;
+    height: 800px;
+    top: 42%;
+  }
+}
+
+
+/* LS Roleta 17.2 - acabamento final */
+.premium-roulette-stage {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(200, 16, 46, .30), transparent 36%),
+    radial-gradient(circle at 50% 8%, rgba(247, 183, 51, .10), transparent 26%),
+    linear-gradient(180deg, #020202 0%, #100204 45%, #030303 100%);
+}
+
+.premium-roulette-vignette {
+  background:
+    radial-gradient(circle at 50% 40%, transparent 0 36%, rgba(0,0,0,.22) 62%, rgba(0,0,0,.72) 100%),
+    linear-gradient(90deg, rgba(0,0,0,.82), transparent 24%, transparent 76%, rgba(0,0,0,.82));
+}
+
+.premium-roulette-gold-sweep {
+  height: 72px;
+  filter: blur(9px);
+  animation-duration: 6.2s;
+}
+
+.premium-particles i {
+  opacity: .25;
+  box-shadow: 0 0 14px rgba(247,183,51,.55);
+}
+
+@media (max-width: 760px) {
+  .premium-roulette-image {
+    width: 1250px !important;
+    height: 690px !important;
+    top: 40% !important;
+  }
+}

@@ -1,0 +1,155 @@
+.automacao-24 {
+  width: min(1180px, calc(100% - 28px));
+  margin: 22px auto;
+}
+
+.auto-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.auto-head h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 26px;
+}
+
+.auto-head p {
+  margin: 6px 0 0;
+  color: #aaa;
+  font-weight: 700;
+}
+
+.auto-status {
+  min-width: 128px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.14);
+  text-align: center;
+}
+
+.auto-status.on {
+  border-color: rgba(0,184,95,.45);
+  box-shadow: 0 0 28px rgba(0,184,95,.22);
+}
+
+.auto-status strong {
+  display: block;
+  color: #fff;
+}
+
+.auto-status.on strong {
+  color: #caffdf;
+}
+
+.auto-status span {
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.auto-error {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255,38,56,.12);
+  border: 1px solid rgba(255,38,56,.35);
+  color: #fff;
+  font-weight: 900;
+  margin-bottom: 14px;
+}
+
+.auto-grid {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+  gap: 16px;
+}
+
+.auto-side {
+  display: grid;
+  gap: 14px;
+}
+
+.auto-stat-main,
+.auto-last,
+.auto-ranking {
+  border-radius: 24px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(15,15,15,.92), rgba(4,4,4,.82));
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow:
+    0 26px 70px rgba(0,0,0,.70),
+    inset 0 0 32px rgba(255,255,255,.04);
+  backdrop-filter: blur(20px);
+}
+
+.auto-stat-main span,
+.auto-stat-main small {
+  display: block;
+  color: #aaa;
+  font-weight: 800;
+}
+
+.auto-stat-main strong {
+  display: block;
+  color: #f7b733;
+  font-size: 44px;
+  font-weight: 1000;
+  margin: 4px 0;
+}
+
+.auto-last h3,
+.auto-ranking h3 {
+  margin: 0 0 12px;
+  color: #fff;
+}
+
+.auto-last div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.auto-last b {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #c8102e, #4a0010);
+}
+
+.auto-last b:nth-child(even) {
+  background: linear-gradient(135deg, #191919, #000);
+}
+
+.auto-last b.zero {
+  background: linear-gradient(135deg, #00b85f, #003f22);
+}
+
+.auto-ranking p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #ddd;
+  font-weight: 800;
+  margin: 8px 0;
+}
+
+.auto-ranking strong {
+  color: #caffdf;
+}
+
+@media (max-width: 760px) {
+  .auto-head {
+    align-items: flex-start;
+  }
+
+  .auto-grid {
+    grid-template-columns: 1fr;
+  }
+}

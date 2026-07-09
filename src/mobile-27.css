@@ -1,0 +1,267 @@
+
+/* LS Roleta 27.0 - Ajuste mobile sem mexer no desktop */
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+    width: 100%;
+    overflow-x: hidden;
+    background: #050505;
+  }
+
+  body {
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .app,
+  .page,
+  .main,
+  .main-container,
+  .dashboard,
+  .content,
+  .app-shell {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding-bottom: 96px !important;
+  }
+
+  /* Área visual da roleta */
+  .hero,
+  .header-visual,
+  .top-roulette,
+  .roulette-hero,
+  .mobile25-hero {
+    height: 42dvh !important;
+    min-height: 310px !important;
+    max-height: 420px !important;
+    overflow: hidden !important;
+  }
+
+  .premium-roulette-stage,
+  .roulette-glb-stage,
+  .three-roulette-stage,
+  .real-roulette-stage {
+    height: 100% !important;
+    min-height: 310px !important;
+  }
+
+  .premium-roulette-image {
+    width: 1180px !important;
+    height: 660px !important;
+    top: 40% !important;
+    opacity: .82 !important;
+    filter: saturate(1.08) contrast(1.05) brightness(.70) !important;
+    transform: translate(-50%, -50%) scale(1.03) !important;
+  }
+
+  /* Cards e blocos */
+  .cards-grid,
+  .stats-grid,
+  .dashboard-inteligente,
+  .auto-grid,
+  .tempo-real-grid,
+  .estrategias-grid,
+  .admin-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: calc(100% - 24px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .card,
+  .signal-card,
+  .signal-card-v20,
+  .last-number-card,
+  .sequence-card,
+  .main-card,
+  .glass-card,
+  .dash-card,
+  .auto-stat-main,
+  .auto-last,
+  .auto-ranking,
+  .tempo-real-history,
+  .estrategias-config-card,
+  .admin-avancado,
+  .ranking-estrategias,
+  .mobile25-panel {
+    width: calc(100% - 24px) !important;
+    max-width: calc(100% - 24px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 16px !important;
+    border-radius: 20px !important;
+  }
+
+  .signal-card-v20 {
+    margin-top: 8px !important;
+  }
+
+  .signal-main strong {
+    font-size: clamp(28px, 9vw, 40px) !important;
+    line-height: 1.04 !important;
+  }
+
+  .signal-zero {
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .signal-zero strong {
+    font-size: 18px !important;
+  }
+
+  .signal-row {
+    padding: 11px 0 !important;
+  }
+
+  .confidence-title strong {
+    font-size: 19px !important;
+  }
+
+  .last-number-ball,
+  .number-ball,
+  .roulette-number-ball {
+    width: 116px !important;
+    height: 116px !important;
+    font-size: 44px !important;
+  }
+
+  /* Automação: no celular deixa só o essencial */
+  .auto-head,
+  .tempo-real-head {
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .auto-head h2,
+  .tempo-real-head h2,
+  .estrategias-config-head h2,
+  .admin-head h2 {
+    font-size: 22px !important;
+  }
+
+  .auto-head p,
+  .tempo-real-head p,
+  .estrategias-config-head p,
+  .admin-head p {
+    font-size: 13px !important;
+  }
+
+  .auto-side {
+    gap: 12px !important;
+  }
+
+  .auto-last b,
+  .numbers-list span {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 13px !important;
+  }
+
+  /* Estratégias e config */
+  .estrategia-item {
+    padding: 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .estrategia-top {
+    gap: 10px !important;
+  }
+
+  .estrategia-top h3 {
+    font-size: 16px !important;
+  }
+
+  .estrategia-top p {
+    font-size: 12px !important;
+  }
+
+  .estrategia-controls {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+  }
+
+  .admin-actions {
+    flex-direction: column !important;
+  }
+
+  /* Menu inferior */
+  .bottom-nav,
+  .mobile25-nav,
+  nav[class*="bottom"],
+  .nav-bottom {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    z-index: 999 !important;
+    height: 76px !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 6px !important;
+    padding: 8px !important;
+    border-radius: 22px !important;
+    background: rgba(5,5,5,.88) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    box-shadow:
+      0 24px 80px rgba(0,0,0,.75),
+      0 0 34px rgba(200,16,46,.18),
+      inset 0 0 24px rgba(255,255,255,.04) !important;
+    backdrop-filter: blur(22px) !important;
+  }
+
+  .bottom-nav button,
+  .mobile25-nav button,
+  nav[class*="bottom"] button,
+  .nav-bottom button {
+    min-width: 0 !important;
+    height: 58px !important;
+    border-radius: 16px !important;
+    font-size: 10px !important;
+    padding: 5px 3px !important;
+  }
+
+  /* Evita que blocos fiquem escondidos atrás do menu */
+  .automacao-24,
+  .tempo-real-23,
+  .dashboard-inteligente,
+  .estrategias-config-card,
+  .admin-avancado,
+  .ranking-estrategias {
+    margin-bottom: 18px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .premium-roulette-image {
+    width: 1060px !important;
+    height: 610px !important;
+    top: 39% !important;
+  }
+
+  .hero,
+  .header-visual,
+  .top-roulette,
+  .roulette-hero,
+  .mobile25-hero {
+    min-height: 290px !important;
+    height: 40dvh !important;
+  }
+
+  .signal-main strong {
+    font-size: 28px !important;
+  }
+
+  .bottom-nav,
+  .mobile25-nav,
+  nav[class*="bottom"],
+  .nav-bottom {
+    left: 8px !important;
+    right: 8px !important;
+    gap: 4px !important;
+  }
+}

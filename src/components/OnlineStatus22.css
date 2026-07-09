@@ -1,0 +1,31 @@
+.online-status-22 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  font-weight: 1000;
+  box-shadow: 0 18px 40px rgba(0,0,0,.42);
+  backdrop-filter: blur(16px);
+}
+
+.online-status-22.on {
+  border-color: rgba(0,184,95,.42);
+  box-shadow: 0 0 26px rgba(0,184,95,.20);
+}
+
+.online-status-22.on span {
+  color: #caffdf;
+}
+
+.online-status-22.off span {
+  color: #ddd;
+}
+
+.online-status-22 small {
+  color: #aaa;
+  font-size: 12px;
+}

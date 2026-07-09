@@ -1,0 +1,122 @@
+/* LS Roleta 29.1 - correção mobile + menu + API visual
+   Não mexe no desktop. Só telas pequenas. */
+
+@media (max-width: 768px) {
+  .app {
+    min-height: 100dvh !important;
+    padding-bottom: 96px !important;
+    overflow-x: hidden !important;
+  }
+
+  .content {
+    margin-top: -82px !important;
+    padding-bottom: 108px !important;
+  }
+
+  .hero {
+    height: 34dvh !important;
+    min-height: 245px !important;
+    max-height: 315px !important;
+  }
+
+  .hero-cards {
+    gap: 10px !important;
+  }
+
+  .last-card,
+  .signal-card,
+  .sequence-card,
+  .card {
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .last-card {
+    padding: 14px !important;
+  }
+
+  .number-ball {
+    width: 96px !important;
+    height: 96px !important;
+  }
+
+  .signal-card {
+    padding: 14px !important;
+  }
+
+  .signal-card h1.waiting {
+    font-size: 42px !important;
+  }
+
+  .sequence-card {
+    padding: 14px !important;
+  }
+
+  .sequence-ring {
+    width: 100px !important;
+    height: 100px !important;
+  }
+
+  .bottom-nav {
+    position: fixed !important;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 72px) !important;
+    height: 62px !important;
+    width: auto !important;
+    z-index: 99999 !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 5px !important;
+    padding: 6px !important;
+    border-radius: 20px !important;
+    background: rgba(5, 5, 5, .94) !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    box-shadow: 0 18px 55px rgba(0,0,0,.76), 0 0 18px rgba(200,16,46,.18) !important;
+    backdrop-filter: blur(22px) !important;
+  }
+
+  .bottom-nav button {
+    height: 50px !important;
+    min-width: 0 !important;
+    border-radius: 14px !important;
+    font-size: 8.5px !important;
+    line-height: 1 !important;
+    padding: 3px 2px !important;
+  }
+
+  .bottom-nav button span {
+    font-size: 14px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .bottom-nav button.active {
+    background: linear-gradient(135deg, rgba(200,16,46,.95), rgba(255,38,56,.75)) !important;
+    color: #fff !important;
+  }
+
+  .score-grid,
+  .pro-panel,
+  .double-grid,
+  .donut-grid {
+    margin-bottom: 14px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .content {
+    margin-top: -74px !important;
+  }
+
+  .bottom-nav {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 68px) !important;
+  }
+
+  .signal-card h1.waiting {
+    font-size: 36px !important;
+  }
+}

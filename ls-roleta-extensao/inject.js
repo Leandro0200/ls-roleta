@@ -1,0 +1,1 @@
+console.log("LS Roleta inject carregado, mas captura agora é via Debugger API.");

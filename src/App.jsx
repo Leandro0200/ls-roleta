@@ -20,15 +20,19 @@ const MENU = [
 ];
 
 const DEFAULT_STRATEGIES = [
-  { id:"cores", title:"Tendência de Cor", desc:"Entra na cor oposta após sequência.", icon:"🎯", active:true, min:4, gale:2, conf:72, coverZero:true },
-  { id:"paridade", title:"Par / Ímpar", desc:"Sequência de pares ou ímpares.", icon:"P/I", active:true, min:3, gale:2, conf:70, coverZero:true },
-  { id:"duzias", title:"Padrão de Dúzias", desc:"3 dúzias iguais → entra nas outras 2.", icon:"123", active:true, min:3, gale:2, conf:72, coverZero:true },
-  { id:"colunas", title:"Padrão de Colunas", desc:"Entrada por repetição ou ausência de colunas.", icon:"|||", active:true, min:3, gale:2, conf:70, coverZero:true },
-  { id:"alto-baixo", title:"Tendência de Altos/Baixos", desc:"Baixos ou altos consecutivos.", icon:"↕", active:true, min:4, gale:2, conf:72, coverZero:true },
-  { id:"alternancia", title:"Alternância", desc:"Padrão de alternância de cores.", icon:"🔁", active:false, min:4, gale:1, conf:70, coverZero:true },
-  { id:"repeticao", title:"Repetição / Vizinhos", desc:"Entra no número ou vizinho do último.", icon:"🎲", active:false, min:2, gale:2, conf:65, coverZero:true },
-  { id:"atrasados", title:"Atrasados", desc:"Entra no padrão mais atrasado.", icon:"🏆", active:false, min:5, gale:1, conf:68, coverZero:true },
-  { id:"confirmacao", title:"Confirmação Dupla", desc:"Confirma com 2 padrões antes de entrar.", icon:"✅", active:true, min:2, gale:1, conf:75, coverZero:true },
+  { id:"cores", title:"Sequência de Cores", desc:"4 cores iguais → entra na cor oposta.", icon:"🎯", active:true, min:4, gale:2, conf:78, coverZero:true },
+  { id:"paridade", title:"Par / Ímpar", desc:"5 pares ou ímpares → entra no oposto.", icon:"P/I", active:true, min:5, gale:2, conf:76, coverZero:true },
+  { id:"alto-baixo", title:"Alto / Baixo", desc:"4 altos ou baixos → entra no oposto.", icon:"↕", active:true, min:4, gale:2, conf:72, coverZero:true },
+
+  { id:"duziasSequencia", title:"Sequência de Dúzias", desc:"3 dúzias iguais → entra nas outras duas.", icon:"123", active:true, min:3, gale:2, conf:73, coverZero:true },
+  { id:"duziasAusente", title:"Dúzia Ausente", desc:"Uma dúzia não saiu nos últimos giros.", icon:"⏳", active:true, min:7, gale:2, conf:70, coverZero:true },
+
+  { id:"colunasSequencia", title:"Sequência de Colunas", desc:"3 colunas iguais → entra nas outras duas.", icon:"|||", active:true, min:3, gale:2, conf:74, coverZero:true },
+  { id:"colunasAusente", title:"Coluna Ausente", desc:"Uma coluna não saiu nos últimos giros.", icon:"🏛️", active:true, min:7, gale:2, conf:70, coverZero:true },
+
+  { id:"repeticao", title:"Repetição / Vizinhos", desc:"Entrada por repetição ou vizinhos.", icon:"🎲", active:false, min:2, gale:2, conf:65, coverZero:true },
+  { id:"atrasados", title:"Números Atrasados", desc:"Entrada por atraso de números ou padrões.", icon:"🏆", active:false, min:5, gale:1, conf:68, coverZero:true },
+  { id:"confirmacao", title:"Confirmação Dupla", desc:"Confirma dois padrões antes da entrada.", icon:"✅", active:true, min:2, gale:1, conf:75, coverZero:true },
 ];
 
 const LINKS = { auto:AFILIADO_URL, lightning:AFILIADO_URL, immersive:AFILIADO_URL, fortune:AFILIADO_URL, goldVault:AFILIADO_URL, mega:AFILIADO_URL, xxxtreme:AFILIADO_URL };
@@ -36,7 +40,12 @@ const LINKS = { auto:AFILIADO_URL, lightning:AFILIADO_URL, immersive:AFILIADO_UR
 function loadStrategies(){
   try{
     const local = JSON.parse(localStorage.getItem("ls_strategy_configs_v257") || "null");
-    if(Array.isArray(local)) return local.map(s => ({...DEFAULT_STRATEGIES.find(d=>d.id===s.id), ...s}));
+    if(Array.isArray(local)){
+      const salvasPorId = Object.fromEntries(local.map(s => [s.id, s]));
+      const novas = DEFAULT_STRATEGIES.map(base => ({...base, ...(salvasPorId[base.id] || {})}));
+      const personalizadas = local.filter(s => String(s.id || "").startsWith("personalizada"));
+      return [...novas, ...personalizadas];
+    }
   }catch{}
   return DEFAULT_STRATEGIES;
 }

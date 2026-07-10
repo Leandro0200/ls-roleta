@@ -92,10 +92,11 @@ export default function App(){
 
   async function refresh(){
     try{
-      const [s,m,o]=await Promise.all([
+      const [s,m,o,a]=await Promise.all([
         fetch(`${api}/sinal?mesaId=${mesaId}&t=${Date.now()}`,{cache:"no-store"}),
         fetch(`${api}/mesas?t=${Date.now()}`,{cache:"no-store"}),
-        fetch(`${api}/operacoes?mesaId=${mesaId}&limit=80&t=${Date.now()}`,{cache:"no-store"}).catch(()=>null)
+        fetch(`${api}/operacoes?mesaId=${mesaId}&limit=80&t=${Date.now()}`,{cache:"no-store"}).catch(()=>null),
+        fetch(`${api}/mesas-ativas?t=${Date.now()}`,{cache:"no-store"}).catch(()=>null)
       ]);
 
       if(s.ok){
@@ -115,6 +116,14 @@ export default function App(){
         const opsJson = await o.json();
         setOps(opsJson);
       }
+
+      if(a&&a.ok){
+        const ativasJson = await a.json();
+        if(ativasJson?.mesasAtivas){
+          setMesasAtivas(ativasJson.mesasAtivas);
+          localStorage.setItem("ls_mesas_ativas", JSON.stringify(ativasJson.mesasAtivas));
+        }
+      }
     }catch(e){
       console.warn("❌ Falha ao buscar API:", e.message);
     }
@@ -125,6 +134,31 @@ export default function App(){
   useEffect(()=>{
     localStorage.setItem("ls_mesas_ativas", JSON.stringify(mesasAtivas));
   }, [mesasAtivas]);
+
+  async function salvarMesasAtivasNaApi(novoMapa){
+    setMesasAtivas(novoMapa);
+    localStorage.setItem("ls_mesas_ativas", JSON.stringify(novoMapa));
+
+    try{
+      const resposta = await fetch(`${api}/mesas-ativas`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({mesasAtivas:novoMapa})
+      });
+
+      if(!resposta.ok){
+        throw new Error(`HTTP ${resposta.status}`);
+      }
+
+      const json = await resposta.json();
+      if(json?.mesasAtivas){
+        setMesasAtivas(json.mesasAtivas);
+        localStorage.setItem("ls_mesas_ativas", JSON.stringify(json.mesasAtivas));
+      }
+    }catch(e){
+      console.warn("❌ Não foi possível salvar mesas ativas na API:",e.message);
+    }
+  }
 
   useEffect(()=>{
     localStorage.setItem("ls_strategy_configs_v257",JSON.stringify(strategies));
@@ -142,7 +176,7 @@ export default function App(){
     <header><button>☰</button><div className="brand"><b>LS</b><span>ROULETTE</span></div><em><i/>AO VIVO</em></header>
 
     {page==="inicio" && <Inicio mesa={mesa} sinal={sinal} stats={stats} ultimo={data?.ultimo} hist={data?.historico||[]} mesaId={mesaId} mesas={mesasView} setMesaId={setMesaId} mesasAtivas={mesasAtivas}/>}
-    {page==="mesas" && <Mesas mesas={mesasView} mesaId={mesaId} setMesaId={setMesaId} mesasAtivas={mesasAtivas} setMesasAtivas={setMesasAtivas}/>} 
+    {page==="mesas" && <Mesas mesas={mesasView} mesaId={mesaId} setMesaId={setMesaId} mesasAtivas={mesasAtivas} salvarMesasAtivasNaApi={salvarMesasAtivasNaApi}/>} 
     {page==="estrategias" && <Estrategias strategies={strategies} setStrategies={setStrategies}/>}
     {page==="historico" && <Historico ops={ops} hist={data?.historico||[]} stats={stats}/>}
     {page==="config" && <Config api={api} setApi={setApi}/>}
@@ -160,7 +194,7 @@ function Inicio({mesa,sinal,stats,ultimo,hist,mesaId,mesas=[],setMesaId,mesasAti
     <section className={`signal ${sinal?.statusOperacao||""}`}>
       <p className="status">{label(sinal)}</p>
       <h1 className={!sinal?.entrada ? "waitingTitle" : ""}>
-        {sinal?.entrada ? <>ENTRAR EM<br/><strong>{sinal.entrada}</strong></> : "AGUARDANDO"}
+        {sinal?.pausado ? "MESA PAUSADA" : (sinal?.entrada ? <>ENTRAR EM<br/><strong>{sinal.entrada}</strong></> : "AGUARDANDO")}
       </h1>
       <small>{sinal?.motivo||"Aguardando padrão forte"}</small>
       <div className="info"><p><span>Proteção</span><b>🟢 {sinal?.cobertura||"ZERO"}</b></p><p><span>Até Gale</span><b>{sinal?.galeMax??2}</b></p><p><span>Confiança</span><b>{sinal?.confianca||"--"}</b></p></div>
@@ -172,12 +206,13 @@ function Inicio({mesa,sinal,stats,ultimo,hist,mesaId,mesas=[],setMesaId,mesasAti
   </main>
 }
 
-function Mesas({mesas,mesaId,setMesaId,mesasAtivas,setMesasAtivas}){
+function Mesas({mesas,mesaId,setMesaId,mesasAtivas,salvarMesasAtivasNaApi}){
   const toggleMesa=(id)=>{
-    setMesasAtivas((old)=>({...old,[id]: old[id] === false ? true : false}));
+    const novoMapa={...mesasAtivas,[id]:mesasAtivas?.[id]===false};
+    salvarMesasAtivasNaApi(novoMapa);
   };
 
-  return <main><h2>Mesas</h2><p className="desc">Selecione quais mesas ficam ativas no sistema</p><div className="mesasGrid">{mesas.map(m=>{
+  return <main><h2>Mesas</h2><p className="desc">Mesas ON geram sinais e contam Green/Loss. Mesas OFF ficam pausadas.</p><div className="mesasGrid">{mesas.map(m=>{
     const ativa = mesasAtivas?.[m.id] !== false;
     return <article className={`mesaPremium ${mesaId===m.id?"sel":""} ${!ativa?"off":""}`} key={m.id}>
       <button className="mesaSelect" onClick={()=>setMesaId(m.id)}>

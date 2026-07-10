@@ -15,12 +15,23 @@ const DATA_DIR = path.resolve("ls-roleta-api/data");
 const HISTORICO_FILE = path.join(DATA_DIR, "historico.json");
 const STRATEGIES_FILE = path.join(DATA_DIR, "strategy-configs.json");
 const OPERACOES_FILE = path.join(DATA_DIR, "operacoes.json");
+const MESAS_ATIVAS_FILE = path.join(DATA_DIR, "mesas-ativas.json");
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let historico = carregarJson(HISTORICO_FILE, []);
 let strategyConfigs = carregarJson(STRATEGIES_FILE, []);
 let operacoes = carregarJson(OPERACOES_FILE, []);
+
+function criarMapaMesasAtivas() {
+  return Object.fromEntries(CASINOSCORES_MESAS.map((mesa) => [mesa.id, true]));
+}
+
+let mesasAtivas = {
+  ...criarMapaMesasAtivas(),
+  ...carregarJson(MESAS_ATIVAS_FILE, {})
+};
+
 let operacaoAtualPorMesa = {};
 let ultimaOperacaoFinalizadaPorMesa = {};
 let sinalAtualPorMesa = {};
@@ -63,6 +74,16 @@ function salvarOperacoes() {
   salvarJson(OPERACOES_FILE, operacoes.slice(0, 2000));
 }
 
+function salvarMesasAtivas() {
+  salvarJson(MESAS_ATIVAS_FILE, mesasAtivas);
+}
+
+function mesaEstaAtiva(mesaId) {
+  // Resultados manuais continuam permitidos para testes.
+  if (mesaId === "manual") return true;
+  return mesasAtivas[mesaId] !== false;
+}
+
 function getMesaNome(mesaId) {
   return CASINOSCORES_MESAS.find((m) => m.id === mesaId)?.nome || "Mesa desconhecida";
 }
@@ -99,6 +120,38 @@ function registrarNumero(numero, extra = {}) {
   historico = historico.slice(0, 30000);
   salvarHistorico();
 
+  if (!mesaEstaAtiva(mesaId)) {
+    const sinalPausado = {
+      ativo: false,
+      pausado: true,
+      mesaId,
+      mesa,
+      status: "MESA DESATIVADA",
+      statusOperacao: "mesa_desativada",
+      entrada: "",
+      cobertura: "ZERO",
+      coberturaZero: true,
+      galeMax: 2,
+      progressao: "Até Gale 2",
+      texto: "Mesa desativada no painel",
+      motivo: "Ative esta mesa para gerar sinais e contabilizar Green/Loss.",
+      confianca: "0%",
+      criadoEm: new Date().toISOString()
+    };
+
+    sinalAtualPorMesa[mesaId] = sinalPausado;
+
+    console.log("⏸️ Mesa desativada:", mesa, "| resultado armazenado sem processar operação");
+    return {
+      duplicado: false,
+      ignorado: true,
+      motivo: "mesa_desativada",
+      resultado,
+      sinal: sinalPausado,
+      operacao: operacaoAtualPorMesa[mesaId] || null
+    };
+  }
+
   const operacao = processarOperacao(mesaId, resultado);
   const sinal = gerarOuManterSinal(mesaId, resultado, operacao);
 
@@ -106,7 +159,7 @@ function registrarNumero(numero, extra = {}) {
 
   console.log("🎯 Resultado:", numero, resultado.cor, "|", mesa);
   console.log("🎮 Operação:", operacaoAtualPorMesa[mesaId] || "sem operação");
-  console.log("🧠 Sinal 36.0:", sinal);
+  console.log("🧠 Sinal 43.1:", sinal);
 
   return { duplicado: false, resultado, sinal, operacao: operacaoAtualPorMesa[mesaId] || null };
 }
@@ -319,12 +372,38 @@ function formatarSinalDaOperacao(op) {
 
 function gerarSinal(mesaId = "auto") {
   const mesa = getMesaNome(mesaId);
+
+  if (!mesaEstaAtiva(mesaId)) {
+    return {
+      ativo: false,
+      pausado: true,
+      mesaId,
+      mesa,
+      status: "MESA DESATIVADA",
+      statusOperacao: "mesa_desativada",
+      entrada: "",
+      cobertura: "ZERO",
+      coberturaZero: true,
+      galeMax: 2,
+      progressao: "Até Gale 2",
+      texto: "Mesa desativada no painel",
+      motivo: "Ative esta mesa para gerar sinais e contabilizar Green/Loss.",
+      confianca: "0%",
+      criadoEm: new Date().toISOString()
+    };
+  }
+
   const lista = historico.filter((r) => r.mesaId === mesaId);
   return analisarMesa(lista, mesaId, mesa, strategyConfigs);
 }
 
 function recalcularSinais() {
   for (const mesa of CASINOSCORES_MESAS) {
+    if (!mesaEstaAtiva(mesa.id)) {
+      sinalAtualPorMesa[mesa.id] = gerarSinal(mesa.id);
+      continue;
+    }
+
     if (!operacaoAtualPorMesa[mesa.id]) {
       sinalAtualPorMesa[mesa.id] = gerarSinal(mesa.id);
     }
@@ -416,6 +495,45 @@ app.get("/operacoes", (req, res) => {
   });
 });
 
+app.get("/mesas-ativas", (req, res) => {
+  res.json({
+    ok: true,
+    mesasAtivas,
+    atualizadasEm: new Date().toISOString()
+  });
+});
+
+app.post("/mesas-ativas", (req, res) => {
+  const recebidas = req.body?.mesasAtivas;
+
+  if (!recebidas || typeof recebidas !== "object" || Array.isArray(recebidas)) {
+    return res.status(400).json({
+      ok: false,
+      erro: "Envie { mesasAtivas: { auto: true, lightning: false, ... } }"
+    });
+  }
+
+  const novoMapa = criarMapaMesasAtivas();
+
+  for (const mesa of CASINOSCORES_MESAS) {
+    if (Object.prototype.hasOwnProperty.call(recebidas, mesa.id)) {
+      novoMapa[mesa.id] = recebidas[mesa.id] !== false;
+    } else {
+      novoMapa[mesa.id] = mesasAtivas[mesa.id] !== false;
+    }
+  }
+
+  mesasAtivas = novoMapa;
+  salvarMesasAtivas();
+  recalcularSinais();
+
+  res.json({
+    ok: true,
+    mensagem: "Mesas ativas atualizadas. Mesas OFF não geram sinais nem contabilizam Green/Loss.",
+    mesasAtivas
+  });
+});
+
 app.get("/mesas", (req, res) => {
   res.json(CASINOSCORES_MESAS.map((mesa) => {
     const h = historico.filter((r) => r.mesaId === mesa.id);
@@ -424,6 +542,7 @@ app.get("/mesas", (req, res) => {
 
     return {
       ...mesa,
+      ativaNoMotor: mesaEstaAtiva(mesa.id),
       status: statusFonte.mesas?.[mesa.id] || null,
       ultimo: h[0] || null,
       historico: h.slice(0, 10),
@@ -445,12 +564,14 @@ app.get("/sinal", (req, res) => {
 
   res.json({
     status: "online",
-    versao: "42.1",
+    versao: "43.1",
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesaId,
     mesa: getMesaNome(mesaId),
     mesas: CASINOSCORES_MESAS,
+    mesasAtivas,
+    mesaAtiva: mesaEstaAtiva(mesaId),
     estrategiasAtivas: normalizarConfiguracoes(strategyConfigs),
     sinal,
     operacao: op,
@@ -483,6 +604,7 @@ app.get("/status", (req, res) => {
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesas: CASINOSCORES_MESAS,
+    mesasAtivas,
     totalHistorico: historico.length,
     estrategiasSalvas: strategyConfigs.length,
     estatisticas: estatisticasOperacoes(),
@@ -494,9 +616,9 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     projeto: "LS Roleta",
-    versao: "42.1 Mobile Premium Completo",
+    versao: "43.1 Mobile Premium Mesas Ativas",
     mensagem: "API funcionando com interface profissional",
-    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/estrategias", "/operacoes"]
+    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes"]
   });
 });
 
@@ -536,5 +658,5 @@ iniciarCasinoScores({
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
-  console.log(`✅ API LS Roleta 42.1 rodando na porta ${PORT}`);
+  console.log(`✅ API LS Roleta 43.1 rodando na porta ${PORT}`);
 });

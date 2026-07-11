@@ -1,4 +1,4 @@
-// LS Roleta 43.2 - Bot profissional via Evolution API
+// LS Roleta 44.0 - Bot profissional controlado pelo painel
 
 const EVOLUTION_URL = process.env.EVOLUTION_URL || "http://localhost:8080";
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || "ls-roleta-bot2";
@@ -135,17 +135,17 @@ async function enviarComDedupe(sinal, tipo) {
 
   return enviarMensagemWhatsApp(
     WHATSAPP_DESTINO,
-    montarTextoSinal(sinal, LINK_MESA)
+    montarTextoSinal(sinal, sinal?.linkPersonalizado || LINK_MESA)
   );
 }
 
-export async function enviarSinalWhatsApp(sinal) {
-  return enviarComDedupe(sinal, "entrada");
+export async function enviarSinalWhatsApp(sinal, link = LINK_MESA) {
+  return enviarComDedupe({ ...sinal, linkPersonalizado: link }, "entrada");
 }
 
-export async function enviarAtualizacaoWhatsApp(sinal) {
+export async function enviarAtualizacaoWhatsApp(sinal, link = LINK_MESA) {
   return enviarComDedupe(
-    sinal,
+    { ...sinal, linkPersonalizado: link },
     sinal?.statusOperacao || sinal?.status || "atualizacao"
   );
 }

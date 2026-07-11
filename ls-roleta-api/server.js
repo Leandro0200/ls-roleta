@@ -22,6 +22,7 @@ const HISTORICO_FILE = path.join(DATA_DIR, "historico.json");
 const STRATEGIES_FILE = path.join(DATA_DIR, "strategy-configs.json");
 const OPERACOES_FILE = path.join(DATA_DIR, "operacoes.json");
 const MESAS_ATIVAS_FILE = path.join(DATA_DIR, "mesas-ativas.json");
+const WHATSAPP_CONFIG_FILE = path.join(DATA_DIR, "whatsapp-config.json");
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -41,6 +42,30 @@ let mesasAtivas = {
 let operacaoAtualPorMesa = {};
 let ultimaOperacaoFinalizadaPorMesa = {};
 let sinalAtualPorMesa = {};
+
+const WHATSAPP_CONFIG_PADRAO = {
+  enabled: true,
+  eventos: {
+    entrada: true,
+    gale1: true,
+    gale2: true,
+    green: true,
+    greenZero: true,
+    loss: true
+  },
+  mesas: {},
+  estrategias: {},
+  linksPorMesa: {}
+};
+
+let whatsappConfig = {
+  ...WHATSAPP_CONFIG_PADRAO,
+  ...carregarJson(WHATSAPP_CONFIG_FILE, {}),
+  eventos: {
+    ...WHATSAPP_CONFIG_PADRAO.eventos,
+    ...(carregarJson(WHATSAPP_CONFIG_FILE, {})?.eventos || {})
+  }
+};
 let statusFonte = {
   online: false,
   fonte: "CasinoScores",
@@ -94,6 +119,36 @@ function salvarOperacoes() {
 
 function salvarMesasAtivas() {
   salvarJson(MESAS_ATIVAS_FILE, mesasAtivas);
+}
+
+function salvarWhatsAppConfig() {
+  salvarJson(WHATSAPP_CONFIG_FILE, whatsappConfig);
+}
+
+function whatsappPermite(sinal, evento) {
+  if (!whatsappConfig.enabled) return false;
+
+  const mesaId = sinal?.mesaId;
+  const estrategiaId = sinal?.tipo || sinal?.estrategia;
+
+  if (mesaId && whatsappConfig.mesas?.[mesaId] === false) return false;
+  if (estrategiaId && whatsappConfig.estrategias?.[estrategiaId] === false) return false;
+
+  const mapa = {
+    entrada: "entrada",
+    gale_1: "gale1",
+    gale_2: "gale2",
+    green: "green",
+    green_zero: "greenZero",
+    loss: "loss"
+  };
+
+  const chave = mapa[evento] || evento;
+  return whatsappConfig.eventos?.[chave] !== false;
+}
+
+function linkWhatsAppPorMesa(sinal) {
+  return whatsappConfig.linksPorMesa?.[sinal?.mesaId] || process.env.LINK_MESA || "";
 }
 
 function mesaEstaAtiva(mesaId) {
@@ -177,7 +232,7 @@ function registrarNumero(numero, extra = {}) {
 
   console.log("🎯 Resultado:", numero, resultado.cor, "|", mesa);
   console.log("🎮 Operação:", operacaoAtualPorMesa[mesaId] || "sem operação");
-  console.log("🧠 Sinal 43.2:", sinal);
+  console.log("🧠 Sinal 44.0:", sinal);
 
   return { duplicado: false, resultado, sinal, operacao: operacaoAtualPorMesa[mesaId] || null };
 }
@@ -199,7 +254,12 @@ function gerarOuManterSinal(mesaId, resultado, operacaoProcessada) {
     const op = criarOperacao(novoSinal, resultado);
     const sinalFormatado = formatarSinalDaOperacao(op);
 
-    dispararWhatsApp(enviarSinalWhatsApp(sinalFormatado), "nova entrada");
+    if (whatsappPermite(sinalFormatado, "entrada")) {
+      dispararWhatsApp(
+        enviarSinalWhatsApp(sinalFormatado, linkWhatsAppPorMesa(sinalFormatado)),
+        "nova entrada"
+      );
+    }
 
     ultimaOperacaoFinalizadaPorMesa[mesaId] = null;
     operacaoAtualPorMesa[mesaId] = op;
@@ -289,10 +349,13 @@ function processarOperacao(mesaId, resultado) {
     atualizarOperacaoNoHistorico(op);
     salvarOperacoes();
 
-    dispararWhatsApp(
-      enviarAtualizacaoWhatsApp(formatarSinalDaOperacao(op)),
-      op.statusOperacao
-    );
+    const sinalWhats = formatarSinalDaOperacao(op);
+    if (whatsappPermite(sinalWhats, op.statusOperacao)) {
+      dispararWhatsApp(
+        enviarAtualizacaoWhatsApp(sinalWhats, linkWhatsAppPorMesa(sinalWhats)),
+        op.statusOperacao
+      );
+    }
 
     return { finalizada: true, operacao: op };
   }
@@ -304,10 +367,13 @@ function processarOperacao(mesaId, resultado) {
     atualizarOperacaoNoHistorico(op);
     salvarOperacoes();
 
-    dispararWhatsApp(
-      enviarAtualizacaoWhatsApp(formatarSinalDaOperacao(op)),
-      op.statusOperacao
-    );
+    const sinalWhats = formatarSinalDaOperacao(op);
+    if (whatsappPermite(sinalWhats, op.statusOperacao)) {
+      dispararWhatsApp(
+        enviarAtualizacaoWhatsApp(sinalWhats, linkWhatsAppPorMesa(sinalWhats)),
+        op.statusOperacao
+      );
+    }
 
     return { finalizada: false, operacao: op };
   }
@@ -597,7 +663,7 @@ app.get("/sinal", (req, res) => {
 
   res.json({
     status: "online",
-    versao: "43.2",
+    versao: "44.0",
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesaId,
@@ -619,6 +685,53 @@ app.get("/sinal", (req, res) => {
 });
 
 
+app.get("/whatsapp/config", (req, res) => {
+  res.json({
+    ok: true,
+    config: whatsappConfig,
+    status: statusWhatsApp(),
+    mesas: CASINOSCORES_MESAS,
+    estrategias: normalizarConfiguracoes(strategyConfigs)
+  });
+});
+
+app.post("/whatsapp/config", (req, res) => {
+  const recebido = req.body?.config || req.body;
+
+  if (!recebido || typeof recebido !== "object" || Array.isArray(recebido)) {
+    return res.status(400).json({ ok: false, erro: "Configuração inválida" });
+  }
+
+  whatsappConfig = {
+    ...whatsappConfig,
+    ...recebido,
+    eventos: {
+      ...whatsappConfig.eventos,
+      ...(recebido.eventos || {})
+    },
+    mesas: {
+      ...(whatsappConfig.mesas || {}),
+      ...(recebido.mesas || {})
+    },
+    estrategias: {
+      ...(whatsappConfig.estrategias || {}),
+      ...(recebido.estrategias || {})
+    },
+    linksPorMesa: {
+      ...(whatsappConfig.linksPorMesa || {}),
+      ...(recebido.linksPorMesa || {})
+    }
+  };
+
+  salvarWhatsAppConfig();
+
+  res.json({
+    ok: true,
+    mensagem: "Configurações do WhatsApp salvas e aplicadas.",
+    config: whatsappConfig
+  });
+});
+
 app.get("/whatsapp/status", (req, res) => {
   res.json(statusWhatsApp());
 });
@@ -633,7 +746,7 @@ app.get("/whatsapp/preview", (req, res) => {
 app.get("/status", (req, res) => {
   res.json({
     api: "online",
-    projeto: "LS Roleta 43.2",
+    projeto: "LS Roleta 44.0",
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesas: CASINOSCORES_MESAS,
@@ -649,7 +762,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     projeto: "LS Roleta",
-    versao: "43.2 Bot Profissional WhatsApp",
+    versao: "44.0 Painel WhatsApp Integrado",
     mensagem: "API funcionando com interface profissional",
     rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes", "/whatsapp/status", "/whatsapp/preview"]
   });
@@ -691,5 +804,5 @@ iniciarCasinoScores({
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
-  console.log(`✅ API LS Roleta 43.2 rodando na porta ${PORT}`);
+  console.log(`✅ API LS Roleta 44.0 rodando na porta ${PORT}`);
 });

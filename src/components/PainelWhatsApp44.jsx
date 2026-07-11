@@ -60,7 +60,7 @@ export default function PainelWhatsApp44({ api, mesas = [], strategies = [] }) {
   return <main className="whats44">
     <div className="waHead">
       <div>
-        <h2>WhatsApp 44.1</h2>
+        <h2>WhatsApp 45.0</h2>
         <p>O que você alterar aqui passa a valer nos sinais enviados.</p>
       </div>
       <label className="waMaster">

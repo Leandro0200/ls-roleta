@@ -243,7 +243,7 @@ function registrarNumero(numero, extra = {}) {
 
   console.log("🎯 Resultado:", numero, resultado.cor, "|", mesa);
   console.log("🎮 Operação:", operacaoAtualPorMesa[mesaId] || "sem operação");
-  console.log("🧠 Sinal 44.1:", sinal);
+  console.log("🧠 Sinal 45.0:", sinal);
 
   return { duplicado: false, resultado, sinal, operacao: operacaoAtualPorMesa[mesaId] || null };
 }
@@ -360,7 +360,7 @@ function processarOperacao(mesaId, resultado) {
     atualizarOperacaoNoHistorico(op);
     salvarOperacoes();
 
-    const sinalWhats = formatarSinalDaOperacao(op);
+    const sinalWhats = anexarPlacarDoDia(formatarSinalDaOperacao(op));
     if (whatsappPermite(sinalWhats, op.statusOperacao)) {
       dispararWhatsApp(
         enviarAtualizacaoWhatsApp(sinalWhats, linkWhatsAppPorMesa(sinalWhats)),
@@ -403,6 +403,14 @@ function processarOperacao(mesaId, resultado) {
   ultimaOperacaoFinalizadaPorMesa[mesaId] = op;
   atualizarOperacaoNoHistorico(op);
   salvarOperacoes();
+
+  const sinalWhats = anexarPlacarDoDia(formatarSinalDaOperacao(op));
+  if (whatsappPermite(sinalWhats, op.statusOperacao)) {
+    dispararWhatsApp(
+      enviarAtualizacaoWhatsApp(sinalWhats, linkWhatsAppPorMesa(sinalWhats)),
+      op.statusOperacao
+    );
+  }
 
   return { finalizada: true, operacao: op };
 }
@@ -520,6 +528,54 @@ function recalcularSinais() {
   }
 }
 
+
+const FUSO_PLACAR = process.env.PLACAR_TIMEZONE || "America/Sao_Paulo";
+
+function chaveDataLocal(data = new Date()) {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: FUSO_PLACAR,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(new Date(data));
+  } catch {
+    return new Date(data).toISOString().slice(0, 10);
+  }
+}
+
+function estatisticasDoDia(mesaId = null) {
+  const hoje = chaveDataLocal();
+  const lista = operacoes.filter((op) => {
+    if (mesaId && op.mesaId !== mesaId) return false;
+    if (!["green", "green_zero", "loss"].includes(op.statusOperacao)) return false;
+    const referencia = op.finalizadoEm || op.atualizadoEm || op.criadoEm;
+    return referencia && chaveDataLocal(referencia) === hoje;
+  });
+
+  const greens = lista.filter((op) =>
+    op.statusOperacao === "green" || op.statusOperacao === "green_zero"
+  ).length;
+  const losses = lista.filter((op) => op.statusOperacao === "loss").length;
+  const total = greens + losses;
+
+  return {
+    data: hoje,
+    total,
+    greens,
+    losses,
+    assertividade: total ? `${Math.round((greens / total) * 100)}%` : "0%"
+  };
+}
+
+function anexarPlacarDoDia(sinal) {
+  if (!sinal) return sinal;
+  return {
+    ...sinal,
+    placarDia: estatisticasDoDia()
+  };
+}
+
 function estatisticasOperacoes(mesaId = null) {
   const lista = mesaId ? operacoes.filter((o) => o.mesaId === mesaId) : operacoes;
   const finalizadas = lista.filter((o) => ["green", "green_zero", "loss"].includes(o.statusOperacao));
@@ -601,6 +657,7 @@ app.get("/operacoes", (req, res) => {
   res.json({
     ok: true,
     estatisticas: estatisticasOperacoes(mesaId),
+    placarDia: estatisticasDoDia(mesaId),
     operacoes: lista.slice(0, limit)
   });
 });
@@ -674,7 +731,7 @@ app.get("/sinal", (req, res) => {
 
   res.json({
     status: "online",
-    versao: "44.0",
+    versao: "45.0",
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesaId,
@@ -687,6 +744,7 @@ app.get("/sinal", (req, res) => {
     operacao: op,
     ultimaOperacao: finalizada,
     estatisticas: estatisticasOperacoes(mesaId),
+    placarDia: estatisticasDoDia(mesaId),
     ultimo: lista[0] || null,
     historico: lista.slice(0, 100),
     historicoCompleto: lista.slice(0, 500),
@@ -754,10 +812,19 @@ app.get("/whatsapp/preview", (req, res) => {
   res.type("text/plain").send(montarTextoSinal(sinal, "https://go.aff.esportiva.bet/troj2nok"));
 });
 
+app.get("/placar-dia", (req, res) => {
+  const mesaId = req.query.mesaId || null;
+  res.json({
+    ok: true,
+    timezone: FUSO_PLACAR,
+    placar: estatisticasDoDia(mesaId)
+  });
+});
+
 app.get("/status", (req, res) => {
   res.json({
     api: "online",
-    projeto: "LS Roleta 44.1",
+    projeto: "LS Roleta 45.0",
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesas: CASINOSCORES_MESAS,
@@ -765,6 +832,7 @@ app.get("/status", (req, res) => {
     totalHistorico: historico.length,
     estrategiasSalvas: strategyConfigs.length,
     estatisticas: estatisticasOperacoes(),
+    placarDia: estatisticasDoDia(),
     ultimo: historico[0] || null
   });
 });
@@ -773,9 +841,9 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     projeto: "LS Roleta",
-    versao: "44.1 Painel WhatsApp + Proxy Vercel",
+    versao: "45.0 Mensagens Premium + Placar Diário",
     mensagem: "API funcionando com interface profissional",
-    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes", "/whatsapp/status", "/whatsapp/preview", "/whatsapp/config"]
+    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes", "/whatsapp/status", "/whatsapp/preview", "/whatsapp/config", "/placar-dia"]
   });
 });
 
@@ -815,5 +883,5 @@ iniciarCasinoScores({
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
-  console.log(`✅ API LS Roleta 44.1 rodando na porta ${PORT}`);
+  console.log(`✅ API LS Roleta 45.0 rodando na porta ${PORT}`);
 });

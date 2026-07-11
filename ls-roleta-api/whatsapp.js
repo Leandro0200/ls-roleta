@@ -1,4 +1,4 @@
-// LS Roleta 44.1 - Bot profissional controlado pelo painel
+// LS Roleta 45.0 - Mensagens Premium + placar diário
 
 const EVOLUTION_URL = process.env.EVOLUTION_URL || "http://localhost:8080";
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || "ls-roleta-bot2";
@@ -10,8 +10,15 @@ const NOME_BOT = process.env.NOME_BOT || "LS Roleta Premium";
 const enviadosRecentes = new Map();
 const JANELA_DEDUP_MS = 15000;
 
-function numeroLimpo(destino) {
-  return String(destino || "").replace(/\D/g, "");
+function normalizarDestino(destino) {
+  const valor = String(destino || "").trim();
+
+  // Mantém IDs de grupos e outros JIDs do WhatsApp.
+  if (valor.endsWith("@g.us") || valor.endsWith("@s.whatsapp.net")) {
+    return valor;
+  }
+
+  return valor.replace(/\D/g, "");
 }
 
 function chaveMensagem(sinal, tipo) {
@@ -46,46 +53,132 @@ export function statusWhatsApp() {
     instancia: EVOLUTION_INSTANCE,
     destinoConfigurado: Boolean(WHATSAPP_DESTINO),
     provedor: "Evolution API",
-    nomeBot: NOME_BOT
+    nomeBot: NOME_BOT,
+    versao: "45.0"
   };
 }
 
-function cabecalhoPorStatus(sinal) {
+function textoPlacar(placar) {
+  if (!placar) return "";
+
+  return [
+    "━━━━━━━━━━━━━━",
+    "",
+    "📊 *Placar do Dia*",
+    "",
+    `✅ Greens: ${placar.greens ?? 0}`,
+    `🔴 Losses: ${placar.losses ?? 0}`,
+    `🎯 Assertividade: ${placar.assertividade || "0%"}`
+  ].join("\n");
+}
+
+function tituloResultado(sinal) {
   const status = String(sinal?.statusOperacao || "").toLowerCase();
+  const fechamento = String(sinal?.resultadoFinal?.status || sinal?.status || "").toUpperCase();
+  const gale = Number(sinal?.resultadoFinal?.gale ?? sinal?.galeAtual ?? 0);
 
-  if (status === "gale_1") return "🟡 *GALE 1 — MANTER ENTRADA*";
-  if (status === "gale_2") return "🟠 *GALE 2 — ÚLTIMA PROTEÇÃO*";
-  if (status === "green") return "✅ *GREEN CONFIRMADO*";
-  if (status === "green_zero") return "🟢 *GREEN NO ZERO*";
-  if (status === "loss") return "🔴 *LOSS ENCERRADO*";
+  if (status === "loss") return "🔴 *LOSS*";
+  if (status === "green_zero") return "🍀 *GREEN ZERO* 🍀";
+  if (fechamento.includes("G2") || gale === 2) return "🟠 *GREEN G2* 💚";
+  if (fechamento.includes("G1") || gale === 1) return "🟡 *GREEN G1* 💚";
+  return "✅ *GREEN DIRETO* 💚";
+}
 
-  return "🚨 *NOVA ENTRADA CONFIRMADA*";
+function fraseResultado(sinal) {
+  const status = String(sinal?.statusOperacao || "").toLowerCase();
+  const gale = Number(sinal?.resultadoFinal?.gale ?? sinal?.galeAtual ?? 0);
+
+  if (status === "loss") return "📉 Operação encerrada.";
+  if (status === "green_zero") return "💰 Cobertura no ZERO confirmada!";
+  if (gale === 2) return "🏆 Green na 2ª proteção!";
+  if (gale === 1) return "🏆 Green na 1ª proteção!";
+  return "🏆 Operação encerrada com sucesso!";
+}
+
+function montarEntrada(sinal, link) {
+  return [
+    "🚨 *NOVA ENTRADA CONFIRMADA*",
+    "",
+    `🎰 Mesa: ${sinal.mesa || "-"}`,
+    "",
+    `🎯 Entrada: ${sinal.entradaFormatada || sinal.entrada || "-"}`,
+    `🛡️ Proteção: ${sinal.progressao || "Até Gale 2"}`,
+    `🟢 Cobertura: ${sinal.cobertura || "ZERO"}`,
+    "",
+    `🧠 Estratégia: ${sinal.estrategia || "-"}`,
+    "",
+    "📖 Padrão identificado:",
+    sinal.motivo || "Padrão confirmado pelo motor de estratégias.",
+    "",
+    "━━━━━━━━━━━━━━",
+    "",
+    link ? `🔗 Acessar mesa:\n${link}` : "",
+    "",
+    `🤖 ${NOME_BOT}`
+  ].filter(Boolean).join("\n");
+}
+
+function montarGale(sinal, link) {
+  const gale = Number(sinal.galeAtual || 1);
+  const titulo = gale >= 2
+    ? "🟠 *GALE 2 — ÚLTIMA PROTEÇÃO*"
+    : "🟡 *GALE 1 — MANTER A ENTRADA*";
+  const aviso = gale >= 2
+    ? "⚠️ Última proteção da operação."
+    : "⚠️ Aguarde o próximo giro.";
+
+  return [
+    titulo,
+    "",
+    `🎰 Mesa: ${sinal.mesa || "-"}`,
+    "",
+    "🎯 Continuar em:",
+    sinal.entradaFormatada || sinal.entrada || "-",
+    "",
+    `🛡️ Proteção: Gale ${gale}`,
+    `🟢 Cobertura: ${sinal.cobertura || "ZERO"}`,
+    "",
+    "📖 Padrão identificado:",
+    sinal.motivo || "Padrão confirmado pelo motor de estratégias.",
+    "",
+    "━━━━━━━━━━━━━━",
+    "",
+    aviso,
+    link ? `\n🔗 Acessar mesa:\n${link}` : "",
+    "",
+    `🤖 ${NOME_BOT}`
+  ].filter(Boolean).join("\n");
+}
+
+function montarResultado(sinal) {
+  return [
+    tituloResultado(sinal),
+    "",
+    `🎰 Mesa: ${sinal.mesa || "-"}`,
+    `🎲 Resultado: ${sinal.resultadoFinal?.numero ?? "-"}`,
+    "",
+    fraseResultado(sinal),
+    "",
+    textoPlacar(sinal.placarDia),
+    "",
+    `🤖 ${NOME_BOT}`
+  ].filter(Boolean).join("\n");
 }
 
 export function montarTextoSinal(sinal, link = LINK_MESA) {
   if (!sinal) return `${NOME_BOT}: sem sinal no momento.`;
 
   const status = String(sinal.statusOperacao || "").toLowerCase();
-  const encerrado = ["green", "green_zero", "loss"].includes(status);
 
-  return [
-    cabecalhoPorStatus(sinal),
-    "",
-    `🎰 *Mesa:* ${sinal.mesa || "-"}`,
-    !encerrado ? `🎯 *Entrada:* ${sinal.entradaFormatada || sinal.entrada || "-"}` : "",
-    `🟢 *Cobertura:* ${sinal.cobertura || "ZERO"}`,
-    status.startsWith("gale_")
-      ? `🛡️ *Progressão atual:* Gale ${sinal.galeAtual || status.split("_")[1]}`
-      : `🛡️ *Progressão:* ${sinal.progressao || "Até Gale 2"}`,
-    `📊 *Confiança:* ${sinal.confianca || "-"}`,
-    sinal.estrategia ? `📌 *Estratégia:* ${sinal.estrategia}` : "",
-    sinal.motivo && !encerrado ? `🧠 *Leitura:* ${sinal.motivo}` : "",
-    sinal.resultadoFinal?.numero !== undefined ? `🎲 *Resultado:* ${sinal.resultadoFinal.numero}` : "",
-    sinal.resultadoFinal?.status ? `📈 *Fechamento:* ${sinal.resultadoFinal.status}` : "",
-    link && !encerrado ? `\n🔗 *Acessar mesa:*\n${link}` : "",
-    "",
-    `🤖 _${NOME_BOT}_`
-  ].filter(Boolean).join("\n");
+  if (status === "gale_1" || status === "gale_2") {
+    return montarGale(sinal, link);
+  }
+
+  if (["green", "green_zero", "loss"].includes(status)) {
+    return montarResultado(sinal);
+  }
+
+  return montarEntrada(sinal, link);
 }
 
 export async function enviarMensagemWhatsApp(destino, texto) {
@@ -93,7 +186,7 @@ export async function enviarMensagemWhatsApp(destino, texto) {
     return { ok: false, erro: "EVOLUTION_API_KEY não configurada" };
   }
 
-  const numero = numeroLimpo(destino);
+  const numero = normalizarDestino(destino);
   if (!numero) {
     return { ok: false, erro: "WHATSAPP_DESTINO não configurado" };
   }

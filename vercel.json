@@ -1,7 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api/.*).*)",
+      "source": "/api-vps/:path*",
+      "destination": "http://187.127.41.60:4000/:path*"
+    },
+    {
+      "source": "/((?!api-vps/.*).*)",
       "destination": "/index.html"
     }
   ]

@@ -80,6 +80,7 @@ export default function App(){
     return corrigida;
   });
   const [mesaId,setMesaId]=useState(localStorage.getItem("ls_mesa") || "auto");
+  const [inicioSessao,setInicioSessao]=useState(Date.now());
   const [data,setData]=useState(null);
   const [mesas,setMesas]=useState([]);
   const [ops,setOps]=useState({estatisticas:{},operacoes:[]});
@@ -133,7 +134,18 @@ export default function App(){
     }
   }
 
-  useEffect(()=>{ localStorage.setItem("ls_mesa",mesaId); refresh(); const t=setInterval(refresh,1300); return()=>clearInterval(t); },[mesaId,api]);
+  useEffect(()=>{
+    localStorage.setItem("ls_mesa",mesaId);
+
+    // Sempre que trocar de mesa, inicia uma nova sessão visual.
+    setInicioSessao(Date.now());
+    setOps({estatisticas:{greens:0,losses:0,assertividade:"0%"},operacoes:[]});
+    setData(null);
+
+    refresh();
+    const t=setInterval(refresh,1300);
+    return()=>clearInterval(t);
+  },[mesaId,api]);
 
   useEffect(()=>{
     localStorage.setItem("ls_mesas_ativas", JSON.stringify(mesasAtivas));
@@ -172,7 +184,36 @@ export default function App(){
 
   const mesasView = mesas.length ? mesas : FALLBACK_MESAS;
   const mesa=useMemo(()=>mesasView.find(m=>m.id===mesaId) || mesasView[0],[mesasView,mesaId]);
-  const stats=data?.estatisticas||mesa?.estatisticas||ops?.estatisticas||{};
+  const statsSessao=useMemo(()=>{
+    const lista=Array.isArray(ops?.operacoes)?ops.operacoes:[];
+
+    const finalizadasDaSessao=lista.filter((op)=>{
+      if(!["green","green_zero","loss"].includes(op?.statusOperacao)) return false;
+
+      const referencia=op?.finalizadoEm||op?.atualizadoEm||op?.criadoEm;
+      if(!referencia) return false;
+
+      return new Date(referencia).getTime()>=inicioSessao;
+    });
+
+    const greens=finalizadasDaSessao.filter(
+      op=>op.statusOperacao==="green"||op.statusOperacao==="green_zero"
+    ).length;
+
+    const losses=finalizadasDaSessao.filter(
+      op=>op.statusOperacao==="loss"
+    ).length;
+
+    const total=greens+losses;
+
+    return {
+      greens,
+      losses,
+      assertividade:total?`${Math.round((greens/total)*100)}%`:"0%"
+    };
+  },[ops,inicioSessao]);
+
+  const stats=statsSessao;
   const sinal=data?.operacao || data?.sinal || data?.ultimaOperacao;
 
   return <div className="app">
@@ -214,6 +255,13 @@ function Mesas({mesas,mesaId,setMesaId,mesasAtivas,salvarMesasAtivasNaApi}){
   const toggleMesa=(id)=>{
     const novoMapa={...mesasAtivas,[id]:mesasAtivas?.[id]===false};
     salvarMesasAtivasNaApi(novoMapa);
+
+    // Se a mesa atual for desligada ou ligada novamente,
+    // a próxima seleção dela começa com o placar zerado.
+    if(id===mesaId){
+      setMesaId("");
+      setTimeout(()=>setMesaId(id),0);
+    }
   };
 
   return <main><h2>Mesas</h2><p className="desc">Mesas ON geram sinais e contam Green/Loss. Mesas OFF ficam pausadas.</p><div className="mesasGrid">{mesas.map(m=>{

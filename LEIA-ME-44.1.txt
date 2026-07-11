@@ -1,0 +1,46 @@
+LS ROLETA 44.1 — CORREÇÃO COMPLETA
+
+CORRIGIDO
+- Frontend usa /api-vps por padrão (sem Railway, CORS ou Mixed Content)
+- Remove automaticamente URL antiga salva no navegador
+- Tela WhatsApp integrada no menu do app
+- Mesas, estratégias e eventos controlam o envio ao WhatsApp
+- Link individual por mesa
+- Gale 1, Gale 2, Green, Green Zero e Loss automáticos
+- Mapeamento correto entre estratégia do motor e chave do painel
+- dotenv incluído no package.json
+- Backend identificado como 44.1
+
+INSTALAÇÃO NO WINDOWS / VS CODE
+1. Extraia o ZIP na raiz do repositório, substituindo:
+   src/
+   ls-roleta-api/server.js
+   ls-roleta-api/whatsapp.js
+   ls-roleta-api/strategyEngine.js
+   ls-roleta-api/casinoScoresConnector.js
+   package.json
+   vercel.json
+   vite.config.js
+
+2. Não apague nem substitua a pasta ls-roleta-api/data da VPS.
+
+3. Rode:
+   npm install
+   npm run build
+   git add src ls-roleta-api package.json package-lock.json vercel.json vite.config.js
+   git commit -m "LS Roleta 44.1 correção completa"
+   git push origin main
+
+NA VPS
+cd /root/ls-roleta
+git restore ls-roleta-api/data/historico.json ls-roleta-api/data/operacoes.json ls-roleta-api/data/strategy-configs.json 2>/dev/null || true
+git pull
+npm install
+pm2 restart ls-roleta-api --update-env
+pm2 save
+
+TESTES
+https://ls-roleta-premium.vercel.app/api-vps/status
+https://ls-roleta-premium.vercel.app
+
+No app, Configurações deve mostrar /api-vps.

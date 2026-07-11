@@ -21,10 +21,15 @@ export default function PainelWhatsApp44({ api, mesas = [], strategies = [] }) {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
+    setMsg("");
     fetch(`${api}/whatsapp/config?t=${Date.now()}`, { cache: "no-store" })
-      .then(r => r.json())
+      .then(async r => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d?.erro || `HTTP ${r.status}`);
+        return d;
+      })
       .then(d => d?.config && setConfig(d.config))
-      .catch(() => setMsg("Não foi possível carregar o WhatsApp."));
+      .catch((e) => setMsg(`Não foi possível carregar o WhatsApp: ${e.message}`));
   }, [api]);
 
   function patch(secao, chave, valor) {
@@ -55,7 +60,7 @@ export default function PainelWhatsApp44({ api, mesas = [], strategies = [] }) {
   return <main className="whats44">
     <div className="waHead">
       <div>
-        <h2>WhatsApp</h2>
+        <h2>WhatsApp 44.1</h2>
         <p>O que você alterar aqui passa a valer nos sinais enviados.</p>
       </div>
       <label className="waMaster">

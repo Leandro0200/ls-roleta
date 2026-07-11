@@ -1,7 +1,17 @@
+import PainelWhatsApp44, { painelWhatsApp44Css } from "./components/PainelWhatsApp44.jsx";
 import React, { useEffect, useMemo, useState } from "react";
 
-const DEFAULT_API = "https://ls-roleta-production-89c6.up.railway.app";
+const DEFAULT_API = "/api-vps";
 const API_BASE = DEFAULT_API;
+
+function normalizarApi(valor) {
+  const v = String(valor || "").trim();
+  if (!v || v.includes("railway") || v.includes("localhost") || v.includes("187.127.41.60") || v === "http:///api-vps" || v === "http://api-vps") {
+    return API_BASE;
+  }
+  if (v === "api-vps") return "/api-vps";
+  return v.replace(/\/$/, "");
+}
 const AFILIADO_URL = "https://go.aff.esportiva.bet/troj2nok";
 
 const FALLBACK_MESAS = [
@@ -16,7 +26,7 @@ const FALLBACK_MESAS = [
 
 const MENU = [
   ["inicio","📡","Sinal"], ["mesas","🎰","Mesas"], ["estrategias","🧠","Estratégias"],
-  ["historico","📊","Histórico"], ["config","⚙️","Config."], ["suporte","🎧","Suporte"]
+  ["historico","📊","Histórico"], ["whatsapp","📱","WhatsApp"], ["config","⚙️","Config."], ["suporte","🎧","Suporte"]
 ];
 
 const DEFAULT_STRATEGIES = [
@@ -65,15 +75,9 @@ function label(s){
 export default function App(){
   const [page,setPage]=useState("inicio");
   const [api,setApi]=useState(() => {
-    const saved = localStorage.getItem("ls_api_url");
-
-    // Força a API correta caso tenha ficado salvo localhost/Railway antigo no navegador.
-    if (!saved || saved.includes("localhost") || saved.includes("railway")) {
-      localStorage.setItem("ls_api_url", API_BASE);
-      return API_BASE;
-    }
-
-    return saved;
+    const corrigida = normalizarApi(localStorage.getItem("ls_api_url"));
+    localStorage.setItem("ls_api_url", corrigida);
+    return corrigida;
   });
   const [mesaId,setMesaId]=useState(localStorage.getItem("ls_mesa") || "auto");
   const [data,setData]=useState(null);
@@ -172,7 +176,7 @@ export default function App(){
   const sinal=data?.operacao || data?.sinal || data?.ultimaOperacao;
 
   return <div className="app">
-    <style>{css}</style>
+    <style>{css + painelWhatsApp44Css}</style>
     <header><button>☰</button><div className="brand"><b>LS</b><span>ROULETTE</span></div><em><i/>AO VIVO</em></header>
 
     {page==="inicio" && <Inicio mesa={mesa} sinal={sinal} stats={stats} ultimo={data?.ultimo} hist={data?.historico||[]} mesaId={mesaId} mesas={mesasView} setMesaId={setMesaId} mesasAtivas={mesasAtivas}/>}
@@ -353,7 +357,15 @@ function Historico({ops,hist,stats}){
 
 function Config({api,setApi}){
   const [v,setV]=useState(api);
-  return <main><h2>Configurações</h2><div className="settings"><label>URL da API<input value={v} onChange={e=>setV(e.target.value)}/></label><label>WhatsApp / Grupo<input placeholder="5511999999999 ou grupo" /></label><p>🔔 Notificações <em>ON</em></p><p>🔊 Som <em>ON</em></p><p>📳 Vibração <em>ON</em></p><button onClick={()=>{localStorage.setItem("ls_api_url",v);setApi(v)}}>SALVAR</button></div></main>
+  const [msg,setMsg]=useState("");
+  function salvar(){
+    const correta=normalizarApi(v);
+    localStorage.setItem("ls_api_url",correta);
+    setV(correta);
+    setApi(correta);
+    setMsg(correta==="/api-vps" ? "API da VPS conectada pelo proxy seguro ✅" : "URL salva ✅");
+  }
+  return <main><h2>Configurações</h2><div className="settings"><label>URL da API<input value={v} onChange={e=>setV(e.target.value)} placeholder="/api-vps"/></label><small className="apiHelp">Na Vercel, use somente <b>/api-vps</b>.</small><p>🔔 Notificações <em>ON</em></p><p>🔊 Som <em>ON</em></p><p>📳 Vibração <em>ON</em></p><button onClick={salvar}>SALVAR</button>{msg&&<small className="configMsg">{msg}</small>}</div></main>
 }
 
 function Suporte(){
@@ -361,7 +373,7 @@ function Suporte(){
 }
 
 const css=`
-*{box-sizing:border-box}body{margin:0;background:#020405;color:#fff;font-family:Inter,system-ui,Arial}.app{max-width:520px;min-height:100vh;margin:auto;background:radial-gradient(circle at top,#10231d,#030607 42%,#020304);padding:18px 16px 92px}header{display:flex;align-items:center;justify-content:space-between}header button{font-size:26px;background:0;border:0;color:white}.brand b{font-size:42px;color:#48df38;font-style:italic;letter-spacing:-3px}.brand span{font-weight:1000;margin-left:8px}header em{background:#111b19;border-radius:14px;padding:9px 12px;font-style:normal;font-weight:900;font-size:13px}header i{display:inline-block;width:9px;height:9px;background:#34e96d;border-radius:50%;margin-right:7px}.mesaAtual,.signal,.stats,.ultimos,.mesa,.strat,.settings,.support{background:linear-gradient(180deg,#0c1518,#060a0c);border:1px solid #1f3037;border-radius:20px}.mesaAtual{display:flex;align-items:center;gap:12px;padding:13px;margin:18px 0}.mesaAtual div{font-size:36px}.mesaAtual p{margin:0;flex:1}.mesaAtual span,.stats span,.signal span{display:block;color:#9eadb5;text-transform:uppercase;font-size:10px;font-weight:900}.mesaAtual b{font-size:18px}.mesaAtual em{font-style:normal;color:#4af64f;font-size:11px;font-weight:1000}.signal{text-align:center;padding:23px;border-color:#45fb4d;box-shadow:0 0 30px #35ff4d22}.status{font-weight:1000;color:#55ff54}.signal h1{font-size:clamp(44px,13vw,76px);line-height:.92;margin:8px 0;text-transform:uppercase;letter-spacing:-2px}.signal small{color:#b6c4ca;font-weight:800}.info{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin:22px 0;background:#25343b;border-radius:17px;overflow:hidden}.info p{background:#091014;margin:0;padding:12px 6px}.info b{font-size:14px}.signal a,.settings button,.support a{display:block;background:linear-gradient(135deg,#3bd937,#26aa2a);color:white;text-decoration:none;border:0;border-radius:14px;padding:16px;margin-top:12px;font-weight:1000}.signal button{width:100%;background:#071013;border:1px solid #223038;color:#fff;border-radius:14px;padding:15px;margin-top:10px;font-weight:900}.stats{display:grid;grid-template-columns:repeat(3,1fr);margin:14px 0;padding:12px 0}.stats p{text-align:center;margin:0;border-right:1px solid #23333a}.stats p:last-child{border:0}.stats b{font-size:26px;color:#52e943}.loss{color:#ff4a54!important}.ultimos{padding:14px}.ultimos div{display:flex;gap:8px;overflow:auto;margin-top:12px}.ultimos span{min-width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:1000;background:#222}.red{background:#b51f28!important;color:white}.black{background:#1a2027!important;color:white}.green{background:#08a85b!important;color:white}h2{text-transform:uppercase;font-size:30px;margin:18px 0 6px}.desc{color:#adbac2;margin-top:0}.list{display:grid;gap:12px}.mesa,.strat{width:100%;padding:14px;color:white;text-align:left;display:flex;gap:12px;align-items:center}.mesa.sel{border-color:#45ff4d}.mesa i,.strat i{width:62px;height:62px;display:grid;place-items:center;border-radius:50%;background:#10191d;font-size:28px;color:#5cff50;font-style:normal;font-weight:1000}.mesa p,.strat p{margin:0;flex:1}.mesa b,.strat b{display:block;text-transform:uppercase}.mesa small,.strat small{display:block;color:#aebbC4;margin-top:5px}.mesa span{display:block;margin-top:8px}.mesa em{font-style:normal;color:#54ff54;font-weight:1000}.strat label input{display:none}.strat label u{display:block;width:50px;height:28px;border-radius:99px;background:#2a3338;position:relative}.strat label u:after{content:"";width:24px;height:24px;background:white;border-radius:50%;position:absolute;left:2px;top:2px}.strat label input:checked+u{background:#2fd739}.strat label input:checked+u:after{left:24px}.strat input{width:34px;background:transparent;border:0;color:white;font-weight:1000}.history{display:grid;gap:10px}.history div{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;background:#071013;border:1px solid #1f3037;border-radius:14px;padding:13px}.history p{margin:0}.history small{display:block;color:#aebac2}.settings,.support{padding:16px;margin-top:12px}.settings label{display:block;margin-bottom:14px;color:#ced7dc}.settings input{width:100%;background:#020506;border:1px solid #25343b;color:white;border-radius:12px;padding:13px;margin-top:8px}.settings p{display:flex;justify-content:space-between}.settings em{color:#54ff54;font-style:normal;font-weight:1000}nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(520px,100%);height:78px;background:#05090b;border-top:1px solid #1e2d34;display:grid;grid-template-columns:repeat(6,1fr)}nav button{background:0;border:0;color:#aab5bd;font-weight:900}nav button.active{color:#50f24b}nav span{display:block;font-size:22px}nav small{font-size:10px}
+*{box-sizing:border-box}body{margin:0;background:#020405;color:#fff;font-family:Inter,system-ui,Arial}.app{max-width:520px;min-height:100vh;margin:auto;background:radial-gradient(circle at top,#10231d,#030607 42%,#020304);padding:18px 16px 92px}header{display:flex;align-items:center;justify-content:space-between}header button{font-size:26px;background:0;border:0;color:white}.brand b{font-size:42px;color:#48df38;font-style:italic;letter-spacing:-3px}.brand span{font-weight:1000;margin-left:8px}header em{background:#111b19;border-radius:14px;padding:9px 12px;font-style:normal;font-weight:900;font-size:13px}header i{display:inline-block;width:9px;height:9px;background:#34e96d;border-radius:50%;margin-right:7px}.mesaAtual,.signal,.stats,.ultimos,.mesa,.strat,.settings,.support{background:linear-gradient(180deg,#0c1518,#060a0c);border:1px solid #1f3037;border-radius:20px}.mesaAtual{display:flex;align-items:center;gap:12px;padding:13px;margin:18px 0}.mesaAtual div{font-size:36px}.mesaAtual p{margin:0;flex:1}.mesaAtual span,.stats span,.signal span{display:block;color:#9eadb5;text-transform:uppercase;font-size:10px;font-weight:900}.mesaAtual b{font-size:18px}.mesaAtual em{font-style:normal;color:#4af64f;font-size:11px;font-weight:1000}.signal{text-align:center;padding:23px;border-color:#45fb4d;box-shadow:0 0 30px #35ff4d22}.status{font-weight:1000;color:#55ff54}.signal h1{font-size:clamp(44px,13vw,76px);line-height:.92;margin:8px 0;text-transform:uppercase;letter-spacing:-2px}.signal small{color:#b6c4ca;font-weight:800}.info{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin:22px 0;background:#25343b;border-radius:17px;overflow:hidden}.info p{background:#091014;margin:0;padding:12px 6px}.info b{font-size:14px}.signal a,.settings button,.support a{display:block;background:linear-gradient(135deg,#3bd937,#26aa2a);color:white;text-decoration:none;border:0;border-radius:14px;padding:16px;margin-top:12px;font-weight:1000}.signal button{width:100%;background:#071013;border:1px solid #223038;color:#fff;border-radius:14px;padding:15px;margin-top:10px;font-weight:900}.stats{display:grid;grid-template-columns:repeat(3,1fr);margin:14px 0;padding:12px 0}.stats p{text-align:center;margin:0;border-right:1px solid #23333a}.stats p:last-child{border:0}.stats b{font-size:26px;color:#52e943}.loss{color:#ff4a54!important}.ultimos{padding:14px}.ultimos div{display:flex;gap:8px;overflow:auto;margin-top:12px}.ultimos span{min-width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:1000;background:#222}.red{background:#b51f28!important;color:white}.black{background:#1a2027!important;color:white}.green{background:#08a85b!important;color:white}h2{text-transform:uppercase;font-size:30px;margin:18px 0 6px}.desc{color:#adbac2;margin-top:0}.list{display:grid;gap:12px}.mesa,.strat{width:100%;padding:14px;color:white;text-align:left;display:flex;gap:12px;align-items:center}.mesa.sel{border-color:#45ff4d}.mesa i,.strat i{width:62px;height:62px;display:grid;place-items:center;border-radius:50%;background:#10191d;font-size:28px;color:#5cff50;font-style:normal;font-weight:1000}.mesa p,.strat p{margin:0;flex:1}.mesa b,.strat b{display:block;text-transform:uppercase}.mesa small,.strat small{display:block;color:#aebbC4;margin-top:5px}.mesa span{display:block;margin-top:8px}.mesa em{font-style:normal;color:#54ff54;font-weight:1000}.strat label input{display:none}.strat label u{display:block;width:50px;height:28px;border-radius:99px;background:#2a3338;position:relative}.strat label u:after{content:"";width:24px;height:24px;background:white;border-radius:50%;position:absolute;left:2px;top:2px}.strat label input:checked+u{background:#2fd739}.strat label input:checked+u:after{left:24px}.strat input{width:34px;background:transparent;border:0;color:white;font-weight:1000}.history{display:grid;gap:10px}.history div{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;background:#071013;border:1px solid #1f3037;border-radius:14px;padding:13px}.history p{margin:0}.history small{display:block;color:#aebac2}.settings,.support{padding:16px;margin-top:12px}.settings label{display:block;margin-bottom:14px;color:#ced7dc}.settings input{width:100%;background:#020506;border:1px solid #25343b;color:white;border-radius:12px;padding:13px;margin-top:8px}.settings p{display:flex;justify-content:space-between}.settings em{color:#54ff54;font-style:normal;font-weight:1000}nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(520px,100%);height:78px;background:#05090b;border-top:1px solid #1e2d34;display:grid;grid-template-columns:repeat(7,1fr)}nav button{background:0;border:0;color:#aab5bd;font-weight:900}nav button.active{color:#50f24b}nav span{display:block;font-size:22px}nav small{font-size:9px}.apiHelp{display:block;color:#91a3aa;margin:-7px 0 14px}.configMsg{display:block;text-align:center;color:#4bf36a;font-weight:900;margin-top:12px}
 /* 42.1: selecionar mesas + layout */
 .app{max-width:430px;width:100%;overflow-x:hidden}
 .signal h1{font-size:clamp(42px,12vw,66px);word-break:normal;overflow-wrap:break-word}

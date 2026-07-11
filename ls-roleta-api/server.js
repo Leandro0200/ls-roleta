@@ -129,7 +129,18 @@ function whatsappPermite(sinal, evento) {
   if (!whatsappConfig.enabled) return false;
 
   const mesaId = sinal?.mesaId;
-  const estrategiaId = sinal?.tipo || sinal?.estrategia;
+  const nomesParaIds = {
+    "Sequência de Cor": "cores",
+    "Sequência Par/Ímpar": "paridade",
+    "Sequência Alto/Baixo": "alto-baixo",
+    "Sequência de Dúzia": "duziasSequencia",
+    "Dúzia Ausente": "duziasAusente",
+    "Sequência de Coluna": "colunasSequencia",
+    "Coluna Ausente": "colunasAusente",
+    "Alternância de Cor": "alternancia",
+    "Tendência de Cor": "tendencia"
+  };
+  const estrategiaId = sinal?.estrategiaId || nomesParaIds[sinal?.estrategia] || sinal?.tipo || sinal?.estrategia;
 
   if (mesaId && whatsappConfig.mesas?.[mesaId] === false) return false;
   if (estrategiaId && whatsappConfig.estrategias?.[estrategiaId] === false) return false;
@@ -232,7 +243,7 @@ function registrarNumero(numero, extra = {}) {
 
   console.log("🎯 Resultado:", numero, resultado.cor, "|", mesa);
   console.log("🎮 Operação:", operacaoAtualPorMesa[mesaId] || "sem operação");
-  console.log("🧠 Sinal 44.0:", sinal);
+  console.log("🧠 Sinal 44.1:", sinal);
 
   return { duplicado: false, resultado, sinal, operacao: operacaoAtualPorMesa[mesaId] || null };
 }
@@ -746,7 +757,7 @@ app.get("/whatsapp/preview", (req, res) => {
 app.get("/status", (req, res) => {
   res.json({
     api: "online",
-    projeto: "LS Roleta 44.0",
+    projeto: "LS Roleta 44.1",
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesas: CASINOSCORES_MESAS,
@@ -762,9 +773,9 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     projeto: "LS Roleta",
-    versao: "44.0 Painel WhatsApp Integrado",
+    versao: "44.1 Painel WhatsApp + Proxy Vercel",
     mensagem: "API funcionando com interface profissional",
-    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes", "/whatsapp/status", "/whatsapp/preview"]
+    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes", "/whatsapp/status", "/whatsapp/preview", "/whatsapp/config"]
   });
 });
 
@@ -804,5 +815,5 @@ iniciarCasinoScores({
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
-  console.log(`✅ API LS Roleta 44.0 rodando na porta ${PORT}`);
+  console.log(`✅ API LS Roleta 44.1 rodando na porta ${PORT}`);
 });

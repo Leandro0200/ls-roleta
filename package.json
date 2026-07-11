@@ -1,7 +1,7 @@
 {
   "name": "ls-roleta-sinais",
   "private": true,
-  "version": "0.0.0",
+  "version": "44.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -21,7 +21,8 @@
     "react-dom": "^19.2.6",
     "tesseract.js": "^7.0.0",
     "three": "^0.185.0",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "dotenv": "^17.2.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

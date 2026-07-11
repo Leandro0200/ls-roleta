@@ -1,4 +1,4 @@
-// LS Roleta 44.0 - Bot profissional controlado pelo painel
+// LS Roleta 44.1 - Bot profissional controlado pelo painel
 
 const EVOLUTION_URL = process.env.EVOLUTION_URL || "http://localhost:8080";
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || "ls-roleta-bot2";

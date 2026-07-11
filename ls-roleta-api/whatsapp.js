@@ -1,4 +1,4 @@
-// LS Roleta - Bot profissional via Evolution API
+// LS Roleta 43.2 - Bot profissional via Evolution API
 
 const EVOLUTION_URL = process.env.EVOLUTION_URL || "http://localhost:8080";
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || "ls-roleta-bot2";

@@ -4,7 +4,11 @@ import fs from "fs";
 import path from "path";
 import { iniciarCasinoScores, CASINOSCORES_MESAS } from "./casinoScoresConnector.js";
 import { analisarMesa, normalizarConfiguracoes } from "./strategyEngine.js";
-import { statusWhatsApp, montarTextoSinal } from "./whatsapp.js";
+import {
+  statusWhatsApp,
+  montarTextoSinal,
+  enviarSinalWhatsApp
+} from "./whatsapp.js";
 
 const app = express();
 
@@ -179,12 +183,24 @@ function gerarOuManterSinal(mesaId, resultado, operacaoProcessada) {
 
   if (novoSinal?.ativo) {
     const op = criarOperacao(novoSinal, resultado);
+    const sinalFormatado = formatarSinalDaOperacao(op);
+
+    enviarSinalWhatsApp(sinalFormatado)
+      .then((retorno) => {
+        if (!retorno.ok) {
+          console.error("❌ Sinal não enviado ao WhatsApp:", retorno.erro);
+        }
+      })
+      .catch((erro) => {
+        console.error("❌ Erro inesperado no WhatsApp:", erro.message);
+      });
+
     ultimaOperacaoFinalizadaPorMesa[mesaId] = null;
     operacaoAtualPorMesa[mesaId] = op;
     operacoes.unshift(op);
     operacoes = operacoes.slice(0, 2000);
     salvarOperacoes();
-    return formatarSinalDaOperacao(op);
+    return sinalFormatado;
   }
 
   return novoSinal;
@@ -618,7 +634,7 @@ app.get("/", (req, res) => {
     projeto: "LS Roleta",
     versao: "43.1 Mobile Premium Mesas Ativas",
     mensagem: "API funcionando com interface profissional",
-    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes"]
+    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes", "/whatsapp/status", "/whatsapp/preview"]
   });
 });
 

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import fs from "fs";
@@ -7,7 +8,8 @@ import { analisarMesa, normalizarConfiguracoes } from "./strategyEngine.js";
 import {
   statusWhatsApp,
   montarTextoSinal,
-  enviarSinalWhatsApp
+  enviarSinalWhatsApp,
+  enviarAtualizacaoWhatsApp
 } from "./whatsapp.js";
 
 const app = express();
@@ -45,6 +47,18 @@ let statusFonte = {
   atualizadoEm: null,
   mesas: {}
 };
+
+function dispararWhatsApp(promise, contexto) {
+  Promise.resolve(promise)
+    .then((retorno) => {
+      if (!retorno?.ok) {
+        console.error(`❌ WhatsApp (${contexto}):`, retorno?.erro || "falha desconhecida");
+      }
+    })
+    .catch((erro) => {
+      console.error(`❌ WhatsApp (${contexto}):`, erro.message);
+    });
+}
 
 const VERMELHOS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 
@@ -185,15 +199,7 @@ function gerarOuManterSinal(mesaId, resultado, operacaoProcessada) {
     const op = criarOperacao(novoSinal, resultado);
     const sinalFormatado = formatarSinalDaOperacao(op);
 
-    enviarSinalWhatsApp(sinalFormatado)
-      .then((retorno) => {
-        if (!retorno.ok) {
-          console.error("❌ Sinal não enviado ao WhatsApp:", retorno.erro);
-        }
-      })
-      .catch((erro) => {
-        console.error("❌ Erro inesperado no WhatsApp:", erro.message);
-      });
+    dispararWhatsApp(enviarSinalWhatsApp(sinalFormatado), "nova entrada");
 
     ultimaOperacaoFinalizadaPorMesa[mesaId] = null;
     operacaoAtualPorMesa[mesaId] = op;
@@ -283,6 +289,11 @@ function processarOperacao(mesaId, resultado) {
     atualizarOperacaoNoHistorico(op);
     salvarOperacoes();
 
+    dispararWhatsApp(
+      enviarAtualizacaoWhatsApp(formatarSinalDaOperacao(op)),
+      op.statusOperacao
+    );
+
     return { finalizada: true, operacao: op };
   }
 
@@ -292,6 +303,12 @@ function processarOperacao(mesaId, resultado) {
     op.statusOperacao = `gale_${op.galeAtual}`;
     atualizarOperacaoNoHistorico(op);
     salvarOperacoes();
+
+    dispararWhatsApp(
+      enviarAtualizacaoWhatsApp(formatarSinalDaOperacao(op)),
+      op.statusOperacao
+    );
+
     return { finalizada: false, operacao: op };
   }
 

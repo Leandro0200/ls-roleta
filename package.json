@@ -1,7 +1,7 @@
 {
   "name": "ls-roleta-sinais",
   "private": true,
-  "version": "45.0.0",
+  "version": "45.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -35,7 +35,7 @@
     "globals": "^17.6.0",
     "vite": "^8.0.12"
   },
-  "description": "LS Roleta 45.0 - Mensagens Premium e Placar Diário",
+  "description": "LS Roleta 45.1 - Links por mesa e placar de sessão",
   "main": "ls-roleta-api/server.js",
   "keywords": [],
   "author": "",

@@ -1,4 +1,4 @@
-// LS Roleta 45.0 - Mensagens Premium + placar diário
+// LS Roleta 45.1 - Mensagens Premium + placar diário
 
 const EVOLUTION_URL = process.env.EVOLUTION_URL || "http://localhost:8080";
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || "ls-roleta-bot2";
@@ -54,7 +54,7 @@ export function statusWhatsApp() {
     destinoConfigurado: Boolean(WHATSAPP_DESTINO),
     provedor: "Evolution API",
     nomeBot: NOME_BOT,
-    versao: "45.0"
+    versao: "45.1"
   };
 }
 
@@ -64,7 +64,7 @@ function textoPlacar(placar) {
   return [
     "━━━━━━━━━━━━━━",
     "",
-    "📊 *Placar do Dia*",
+    "📊 *Placar da Sessão*",
     "",
     `✅ Greens: ${placar.greens ?? 0}`,
     `🔴 Losses: ${placar.losses ?? 0}`,

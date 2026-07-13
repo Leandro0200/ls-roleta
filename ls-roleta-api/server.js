@@ -43,6 +43,55 @@ let operacaoAtualPorMesa = {};
 let ultimaOperacaoFinalizadaPorMesa = {};
 let sinalAtualPorMesa = {};
 
+const sessoesPorMesa = Object.fromEntries(
+  CASINOSCORES_MESAS.map((mesa) => [
+    mesa.id,
+    { iniciadaEm: new Date().toISOString(), greens: 0, losses: 0 }
+  ])
+);
+
+function garantirSessao(mesaId) {
+  if (!sessoesPorMesa[mesaId]) {
+    sessoesPorMesa[mesaId] = { iniciadaEm: new Date().toISOString(), greens: 0, losses: 0 };
+  }
+  return sessoesPorMesa[mesaId];
+}
+
+function placarSessao(mesaId) {
+  const sessao = garantirSessao(mesaId);
+  const total = sessao.greens + sessao.losses;
+  return {
+    mesaId,
+    iniciadaEm: sessao.iniciadaEm,
+    greens: sessao.greens,
+    losses: sessao.losses,
+    total,
+    assertividade: total ? `${Math.round((sessao.greens / total) * 100)}%` : "0%"
+  };
+}
+
+function reiniciarSessao(mesaId) {
+  sessoesPorMesa[mesaId] = { iniciadaEm: new Date().toISOString(), greens: 0, losses: 0 };
+  return placarSessao(mesaId);
+}
+
+function contabilizarNaSessao(op) {
+  const sessao = garantirSessao(op.mesaId);
+  if (op.statusOperacao === "green" || op.statusOperacao === "green_zero") sessao.greens += 1;
+  if (op.statusOperacao === "loss") sessao.losses += 1;
+  return placarSessao(op.mesaId);
+}
+
+const LINKS_PADRAO_POR_MESA = {
+  auto: "https://esportiva.bet.br/games/evolution/auto-roulette",
+  lightning: "https://esportiva.bet.br/games/evolution/lightning-roulette",
+  immersive: "https://esportiva.bet.br/games/evolution/immersive-roulette",
+  fortune: "https://esportiva.bet.br/games/pragmaticplay/fortune-roulette",
+  goldVault: "https://esportiva.bet.br/games/evolution/gold-vault-roulette",
+  mega: "https://esportiva.bet.br/games/pragmaticplay/mega-roleta",
+  xxxtreme: "https://esportiva.bet.br/games/evolution/xxxtreme-lightning-roulette"
+};
+
 const WHATSAPP_CONFIG_PADRAO = {
   enabled: true,
   eventos: {
@@ -55,7 +104,7 @@ const WHATSAPP_CONFIG_PADRAO = {
   },
   mesas: {},
   estrategias: {},
-  linksPorMesa: {}
+  linksPorMesa: { ...LINKS_PADRAO_POR_MESA }
 };
 
 let whatsappConfig = {
@@ -159,7 +208,7 @@ function whatsappPermite(sinal, evento) {
 }
 
 function linkWhatsAppPorMesa(sinal) {
-  return whatsappConfig.linksPorMesa?.[sinal?.mesaId] || process.env.LINK_MESA || "";
+  return whatsappConfig.linksPorMesa?.[sinal?.mesaId] || LINKS_PADRAO_POR_MESA[sinal?.mesaId] || process.env.LINK_MESA || "";
 }
 
 function mesaEstaAtiva(mesaId) {
@@ -243,7 +292,7 @@ function registrarNumero(numero, extra = {}) {
 
   console.log("🎯 Resultado:", numero, resultado.cor, "|", mesa);
   console.log("🎮 Operação:", operacaoAtualPorMesa[mesaId] || "sem operação");
-  console.log("🧠 Sinal 45.0:", sinal);
+  console.log("🧠 Sinal 45.1:", sinal);
 
   return { duplicado: false, resultado, sinal, operacao: operacaoAtualPorMesa[mesaId] || null };
 }
@@ -360,7 +409,10 @@ function processarOperacao(mesaId, resultado) {
     atualizarOperacaoNoHistorico(op);
     salvarOperacoes();
 
-    const sinalWhats = anexarPlacarDoDia(formatarSinalDaOperacao(op));
+    const sinalWhats = {
+      ...formatarSinalDaOperacao(op),
+      placarDia: contabilizarNaSessao(op)
+    };
     if (whatsappPermite(sinalWhats, op.statusOperacao)) {
       dispararWhatsApp(
         enviarAtualizacaoWhatsApp(sinalWhats, linkWhatsAppPorMesa(sinalWhats)),
@@ -404,7 +456,10 @@ function processarOperacao(mesaId, resultado) {
   atualizarOperacaoNoHistorico(op);
   salvarOperacoes();
 
-  const sinalWhats = anexarPlacarDoDia(formatarSinalDaOperacao(op));
+  const sinalWhats = {
+    ...formatarSinalDaOperacao(op),
+    placarDia: contabilizarNaSessao(op)
+  };
   if (whatsappPermite(sinalWhats, op.statusOperacao)) {
     dispararWhatsApp(
       enviarAtualizacaoWhatsApp(sinalWhats, linkWhatsAppPorMesa(sinalWhats)),
@@ -658,6 +713,7 @@ app.get("/operacoes", (req, res) => {
     ok: true,
     estatisticas: estatisticasOperacoes(mesaId),
     placarDia: estatisticasDoDia(mesaId),
+    placarSessao: placarSessao(mesaId),
     operacoes: lista.slice(0, limit)
   });
 });
@@ -731,7 +787,7 @@ app.get("/sinal", (req, res) => {
 
   res.json({
     status: "online",
-    versao: "45.0",
+    versao: "45.1",
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesaId,
@@ -745,6 +801,7 @@ app.get("/sinal", (req, res) => {
     ultimaOperacao: finalizada,
     estatisticas: estatisticasOperacoes(mesaId),
     placarDia: estatisticasDoDia(mesaId),
+    placarSessao: placarSessao(mesaId),
     ultimo: lista[0] || null,
     historico: lista.slice(0, 100),
     historicoCompleto: lista.slice(0, 500),
@@ -812,6 +869,23 @@ app.get("/whatsapp/preview", (req, res) => {
   res.type("text/plain").send(montarTextoSinal(sinal, "https://go.aff.esportiva.bet/troj2nok"));
 });
 
+app.get("/sessao", (req, res) => {
+  const mesaId = req.query.mesaId || "auto";
+  res.json({ ok: true, placarSessao: placarSessao(mesaId) });
+});
+
+app.post("/sessao/reset", (req, res) => {
+  const mesaId = req.body?.mesaId || req.query?.mesaId;
+  if (!mesaId || !CASINOSCORES_MESAS.some((mesa) => mesa.id === mesaId)) {
+    return res.status(400).json({ ok: false, erro: "Mesa inválida" });
+  }
+  res.json({
+    ok: true,
+    mensagem: `Sessão da mesa ${getMesaNome(mesaId)} reiniciada.`,
+    placarSessao: reiniciarSessao(mesaId)
+  });
+});
+
 app.get("/placar-dia", (req, res) => {
   const mesaId = req.query.mesaId || null;
   res.json({
@@ -824,7 +898,7 @@ app.get("/placar-dia", (req, res) => {
 app.get("/status", (req, res) => {
   res.json({
     api: "online",
-    projeto: "LS Roleta 45.0",
+    projeto: "LS Roleta 45.1",
     motor: "operacoes-green-loss-estatisticas",
     fonte: statusFonte,
     mesas: CASINOSCORES_MESAS,
@@ -841,9 +915,9 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     projeto: "LS Roleta",
-    versao: "45.0 Mensagens Premium + Placar Diário",
+    versao: "45.1 Links por Mesa + Placar de Sessão",
     mensagem: "API funcionando com interface profissional",
-    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes", "/whatsapp/status", "/whatsapp/preview", "/whatsapp/config", "/placar-dia"]
+    rotas: ["/resultado", "/resultados", "/sinal", "/status", "/mesas", "/mesas-ativas", "/estrategias", "/operacoes", "/whatsapp/status", "/whatsapp/preview", "/whatsapp/config", "/placar-dia", "/sessao", "/sessao/reset"]
   });
 });
 
@@ -883,5 +957,5 @@ iniciarCasinoScores({
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
-  console.log(`✅ API LS Roleta 45.0 rodando na porta ${PORT}`);
+  console.log(`✅ API LS Roleta 45.1 rodando na porta ${PORT}`);
 });

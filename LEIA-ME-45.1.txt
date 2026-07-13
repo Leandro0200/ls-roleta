@@ -1,0 +1,21 @@
+LS ROLETA 45.1
+
+- Links individuais em todas as mesas
+- Link correto enviado no WhatsApp
+- Placar da sessão sincronizado entre painel e WhatsApp
+- Ao trocar de mesa, a sessão da nova mesa começa em 0
+- Histórico geral preservado
+
+Computador:
+npm install
+npm run build
+git add .
+git commit -m "LS Roleta 45.1"
+git push origin main
+
+VPS:
+cd /root/ls-roleta
+git pull
+npm install
+pm2 restart ls-roleta-api --update-env
+pm2 save

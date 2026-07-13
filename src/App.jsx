@@ -45,7 +45,15 @@ const DEFAULT_STRATEGIES = [
   { id:"confirmacao", title:"Confirmação Dupla", desc:"Confirma dois padrões antes da entrada.", icon:"✅", active:true, min:2, gale:1, conf:75, coverZero:true },
 ];
 
-const LINKS = { auto:AFILIADO_URL, lightning:AFILIADO_URL, immersive:AFILIADO_URL, fortune:AFILIADO_URL, goldVault:AFILIADO_URL, mega:AFILIADO_URL, xxxtreme:AFILIADO_URL };
+const LINKS = {
+  auto: "https://esportiva.bet.br/games/evolution/auto-roulette",
+  lightning: "https://esportiva.bet.br/games/evolution/lightning-roulette",
+  immersive: "https://esportiva.bet.br/games/evolution/immersive-roulette",
+  fortune: "https://esportiva.bet.br/games/pragmaticplay/fortune-roulette",
+  goldVault: "https://esportiva.bet.br/games/evolution/gold-vault-roulette",
+  mega: "https://esportiva.bet.br/games/pragmaticplay/mega-roleta",
+  xxxtreme: "https://esportiva.bet.br/games/evolution/xxxtreme-lightning-roulette"
+};
 
 function loadStrategies(){
   try{
@@ -80,7 +88,6 @@ export default function App(){
     return corrigida;
   });
   const [mesaId,setMesaId]=useState(localStorage.getItem("ls_mesa") || "auto");
-  const [inicioSessao,setInicioSessao]=useState(()=>Date.now());
   const [data,setData]=useState(null);
   const [mesas,setMesas]=useState([]);
   const [ops,setOps]=useState({estatisticas:{},operacoes:[]});
@@ -136,7 +143,6 @@ export default function App(){
 
   useEffect(()=>{
     localStorage.setItem("ls_mesa",mesaId);
-    setInicioSessao(Date.now());
     setData(null);
     setOps({estatisticas:{greens:0,losses:0,assertividade:"0%"},operacoes:[]});
 
@@ -148,6 +154,24 @@ export default function App(){
   useEffect(()=>{
     localStorage.setItem("ls_mesas_ativas", JSON.stringify(mesasAtivas));
   }, [mesasAtivas]);
+
+  async function selecionarMesa(novaMesaId){
+    if(!novaMesaId || novaMesaId===mesaId) return;
+
+    try{
+      await fetch(`${api}/sessao/reset`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({mesaId:novaMesaId})
+      });
+    }catch(e){
+      console.warn("❌ Não foi possível reiniciar a sessão:",e.message);
+    }
+
+    setData(null);
+    setOps({estatisticas:{greens:0,losses:0,assertividade:"0%"},operacoes:[]});
+    setMesaId(novaMesaId);
+  }
 
   async function salvarMesasAtivasNaApi(novoMapa){
     setMesasAtivas(novoMapa);
@@ -182,41 +206,20 @@ export default function App(){
 
   const mesasView = mesas.length ? mesas : FALLBACK_MESAS;
   const mesa=useMemo(()=>mesasView.find(m=>m.id===mesaId) || mesasView[0],[mesasView,mesaId]);
-  const stats=useMemo(()=>{
-    const lista=Array.isArray(ops?.operacoes)?ops.operacoes:[];
-
-    const finalizadas=lista.filter((op)=>{
-      if(!["green","green_zero","loss"].includes(op?.statusOperacao)) return false;
-      const dataFinal=op?.finalizadoEm||op?.atualizadoEm||op?.criadoEm;
-      if(!dataFinal) return false;
-      return new Date(dataFinal).getTime()>=inicioSessao;
-    });
-
-    const greens=finalizadas.filter(
-      op=>op.statusOperacao==="green"||op.statusOperacao==="green_zero"
-    ).length;
-
-    const losses=finalizadas.filter(
-      op=>op.statusOperacao==="loss"
-    ).length;
-
-    const total=greens+losses;
-
-    return {
-      greens,
-      losses,
-      assertividade:total?`${Math.round((greens/total)*100)}%`:"0%"
-    };
-  },[ops,inicioSessao]);
+  const stats=data?.placarSessao || ops?.placarSessao || {
+    greens:0,
+    losses:0,
+    assertividade:"0%"
+  };
 
   const sinal=data?.operacao || data?.sinal || data?.ultimaOperacao;
 
   return <div className="app">
     <style>{css + painelWhatsApp44Css}</style>
-    <header><button>☰</button><div className="brand"><b>LS</b><span>ROULETTE</span></div><em><i/>AO VIVO</em></header>
+    <header><button>☰</button><div className="brand"><b>LS</b><span>ROULETTE 45.1</span></div><em><i/>AO VIVO</em></header>
 
-    {page==="inicio" && <Inicio mesa={mesa} sinal={sinal} stats={stats} ultimo={data?.ultimo} hist={data?.historico||[]} mesaId={mesaId} mesas={mesasView} setMesaId={setMesaId} mesasAtivas={mesasAtivas}/>}
-    {page==="mesas" && <Mesas mesas={mesasView} mesaId={mesaId} setMesaId={setMesaId} mesasAtivas={mesasAtivas} salvarMesasAtivasNaApi={salvarMesasAtivasNaApi}/>} 
+    {page==="inicio" && <Inicio mesa={mesa} sinal={sinal} stats={stats} ultimo={data?.ultimo} hist={data?.historico||[]} mesaId={mesaId} mesas={mesasView} setMesaId={selecionarMesa} mesasAtivas={mesasAtivas}/>}
+    {page==="mesas" && <Mesas mesas={mesasView} mesaId={mesaId} setMesaId={selecionarMesa} mesasAtivas={mesasAtivas} salvarMesasAtivasNaApi={salvarMesasAtivasNaApi}/>} 
     {page==="estrategias" && <Estrategias strategies={strategies} setStrategies={setStrategies}/>}
     {page==="historico" && <Historico ops={ops} hist={data?.historico||[]} stats={stats}/>}
     {page==="config" && <Config api={api} setApi={setApi}/>}

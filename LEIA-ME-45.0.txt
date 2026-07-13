@@ -1,0 +1,41 @@
+LS ROLETA 45.0 — MENSAGENS PREMIUM + PLACAR DIÁRIO
+
+IMPLEMENTADO
+- Novo modelo profissional de Nova Entrada
+- Gale 1: manter a entrada
+- Gale 2: última proteção
+- Green Direto, Green G1, Green G2 e Green Zero
+- Loss com placar atualizado
+- “Padrão identificado” usando o motivo real da estratégia
+- Placar diário automático: Greens, Losses e Assertividade
+- Contagem diária no fuso America/Sao_Paulo
+- Compatível com contato e grupo (@g.us)
+- Proteção contra mensagens duplicadas
+- Mantém mesas, estratégias, painel WhatsApp e proxy /api-vps
+
+INSTALAÇÃO NO COMPUTADOR
+1. Extraia este ZIP na raiz do projeto e confirme a substituição.
+2. Execute:
+   npm install
+   npm run build
+   git add .
+   git commit -m "LS Roleta 45.0"
+   git push origin main
+
+ATUALIZAÇÃO NA VPS
+cd /root/ls-roleta
+git restore ls-roleta-api/data/historico.json ls-roleta-api/data/operacoes.json ls-roleta-api/data/strategy-configs.json 2>/dev/null || true
+git pull
+npm install
+pm2 restart ls-roleta-api --update-env
+pm2 save
+
+TESTES
+curl http://localhost:4000/status
+curl http://localhost:4000/placar-dia
+curl "http://localhost:4000/whatsapp/preview?mesaId=auto"
+
+IMPORTANTE
+- Não substitua os arquivos JSON da pasta ls-roleta-api/data na VPS.
+- Mantenha apenas uma instância ls-roleta-api no PM2.
+- O destino de grupo deve continuar como: WHATSAPP_DESTINO=ID_DO_GRUPO@g.us
